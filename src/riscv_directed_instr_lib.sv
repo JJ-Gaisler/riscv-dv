@@ -492,14 +492,16 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
     D
   } fli_siz_e;
 
-  int unsigned num_of_avail_regs = 10;
+  int unsigned num_of_avail_regs = 20;
   rand int unsigned   num_of_instr;
   rand fli_siz_e   fli_siz;
   rand bit [4:0]  init_val_type[];
+  rand bit [4:0]  fd_reg[];
   riscv_zfa_instr  init_instr[];
 
   constraint init_val_c {
     init_val_type.size() == num_of_avail_regs;
+    fd_reg.size() == num_of_avail_regs;
     num_of_instr inside {[15:30]};
   }
 
@@ -524,6 +526,7 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
           init_instr[i].instr_name = FLI_S;
         end
         init_instr[i].format = I_FORMAT;
+        init_instr[i].fd = fd_reg[i];
         init_instr[i].imm_tbl_idx = init_val_type[i];
         instr_list.push_back(init_instr[i]);
       end
