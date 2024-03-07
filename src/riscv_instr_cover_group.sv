@@ -33,6 +33,7 @@
     cg.sample(t); \
   end
 
+`define SAMPLE_A(cg, val) `SAMPLE_W_TYPE(cg, val, riscv_amo_instr)
 `define SAMPLE_F(cg, val) `SAMPLE_W_TYPE(cg, val, riscv_floating_point_instr)
 `define SAMPLE_B(cg, val) `SAMPLE_W_TYPE(cg, val, riscv_b_instr)
 `define SAMPLE_ZBA(cg, val) `SAMPLE_W_TYPE(cg, val, riscv_zba_instr)
@@ -198,6 +199,15 @@
     `DV(cp_lsu_hazard  : coverpoint instr.lsu_hazard { \
       bins valid_hazard[] = {NO_HAZARD, RAW_HAZARD}; \
     })
+
+`define AMO_R_INSTR_CG_BEGIN(INSTR_NAME) \
+  `INSTR_CG_BEGIN(INSTR_NAME, riscv_amo_instr) \
+    cp_rs1      : coverpoint instr.rs1; \
+    cp_rs2      : coverpoint instr.rs2; \
+    cp_rd       : coverpoint instr.rd; \
+    cp_aq       : coverpoint instr.aq; \
+    cp_rl       : coverpoint instr.rl; \
+    `DV(cp_gpr_hazard  : coverpoint instr.gpr_hazard;)
 
 `define CL_SP_INSTR_CG_BEGIN(INSTR_NAME) \
   `INSTR_CG_BEGIN(INSTR_NAME) \
@@ -2101,6 +2111,84 @@ class riscv_instr_cover_group;
     cp_rd_align : coverpoint instr.rs1_value[1];
   `CG_END
 
+  // RV64A
+  `INSTR_CG_BEGIN(lr_d, riscv_amo_instr)
+    cp_rs1      : coverpoint instr.rs1;
+    cp_rd       : coverpoint instr.rd;
+    cp_aq       : coverpoint instr.aq;
+    cp_rl       : coverpoint instr.rl;
+    `DV(cp_gpr_hazard  : coverpoint instr.gpr_hazard;)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(sc_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoswap_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoadd_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoand_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoor_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoxor_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomin_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomax_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amominu_d)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomaxu_d)
+  `CG_END
+
+  // RV32A
+  `INSTR_CG_BEGIN(lr_w, riscv_amo_instr)
+    cp_rs1      : coverpoint instr.rs1;
+    cp_rd       : coverpoint instr.rd;
+    cp_aq       : coverpoint instr.aq;
+    cp_rl       : coverpoint instr.rl;
+    `DV(cp_gpr_hazard  : coverpoint instr.gpr_hazard;)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(sc_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoswap_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoadd_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoand_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoor_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amoxor_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomin_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomax_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amominu_w)
+  `CG_END
+
+  `AMO_R_INSTR_CG_BEGIN(amomaxu_w)
+  `CG_END
+
   // RV64C
 
   `CL_INSTR_CG_BEGIN(c_ld)
@@ -2523,6 +2611,34 @@ class riscv_instr_cover_group;
       c_addiw_cg = new();
       c_subw_cg = new();
       c_addw_cg = new();
+    `CG_SELECTOR_END
+
+    `CG_SELECTOR_BEGIN(RV64A)
+      lr_d_cg = new();
+      sc_d_cg = new();
+      amoswap_d_cg = new();
+      amoadd_d_cg = new();
+      amoand_d_cg = new();
+      amoor_d_cg = new();
+      amoxor_d_cg = new();
+      amomin_d_cg = new();
+      amomax_d_cg = new();
+      amominu_d_cg = new();
+      amomaxu_d_cg = new();
+    `CG_SELECTOR_END
+
+    `CG_SELECTOR_BEGIN(RV32A)
+      lr_w_cg = new();
+      sc_w_cg = new();
+      amoswap_w_cg = new();
+      amoadd_w_cg = new();
+      amoand_w_cg = new();
+      amoor_w_cg = new();
+      amoxor_w_cg = new();
+      amomin_w_cg = new();
+      amomax_w_cg = new();
+      amominu_w_cg = new();
+      amomaxu_w_cg = new();
     `CG_SELECTOR_END
 
     `CG_SELECTOR_BEGIN(RV32F)
@@ -3002,6 +3118,28 @@ class riscv_instr_cover_group;
       C_SUBW     : `SAMPLE(c_subw_cg, instr)
       C_ADDW     : `SAMPLE(c_addw_cg, instr)
       C_ADDIW    : `SAMPLE(c_addiw_cg, instr)
+      LR_D       : `SAMPLE_A(lr_d_cg, instr)
+      SC_D       : `SAMPLE_A(sc_d_cg, instr)
+      AMOSWAP_D  : `SAMPLE_A(amoswap_d_cg, instr)
+      AMOADD_D   : `SAMPLE_A(amoadd_d_cg, instr)
+      AMOAND_D   : `SAMPLE_A(amoand_d_cg, instr)
+      AMOOR_D    : `SAMPLE_A(amoor_d_cg, instr)
+      AMOXOR_D   : `SAMPLE_A(amoxor_d_cg, instr)
+      AMOMIN_D   : `SAMPLE_A(amomin_d_cg, instr)
+      AMOMAX_D   : `SAMPLE_A(amomax_d_cg, instr)
+      AMOMINU_D  : `SAMPLE_A(amominu_d_cg, instr)
+      AMOMAXU_D  : `SAMPLE_A(amomaxu_d_cg, instr)
+      LR_W       : `SAMPLE_A(lr_w_cg, instr)
+      SC_W       : `SAMPLE_A(sc_w_cg, instr)
+      AMOSWAP_W  : `SAMPLE_A(amoswap_w_cg, instr)
+      AMOADD_W   : `SAMPLE_A(amoadd_w_cg, instr)
+      AMOAND_W   : `SAMPLE_A(amoand_w_cg, instr)
+      AMOOR_W    : `SAMPLE_A(amoor_w_cg, instr)
+      AMOXOR_W   : `SAMPLE_A(amoxor_w_cg, instr)
+      AMOMIN_W   : `SAMPLE_A(amomin_w_cg, instr)
+      AMOMAX_W   : `SAMPLE_A(amomax_w_cg, instr)
+      AMOMINU_W  : `SAMPLE_A(amominu_w_cg, instr)
+      AMOMAXU_W  : `SAMPLE_A(amomaxu_w_cg, instr)
       FLW        : `SAMPLE_F(flw_cg, instr)
       FLD        : `SAMPLE_F(fld_cg, instr)
       FSW        : `SAMPLE_F(fsw_cg, instr)

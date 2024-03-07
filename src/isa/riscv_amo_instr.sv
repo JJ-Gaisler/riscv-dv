@@ -46,6 +46,14 @@ class riscv_amo_instr extends riscv_instr;
     return get_instr_name;
   endfunction : get_instr_name
 
+  virtual function void set_rand_mode();
+    super.set_rand_mode();
+
+    if (category == LOAD) begin
+      has_rs2 = 1'b0;
+    end
+  endfunction
+
   // Convert the instruction to assembly code
   virtual function string convert2asm(string prefix = "");
     string asm_str;
