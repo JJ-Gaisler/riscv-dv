@@ -202,7 +202,9 @@
 
 `define AMO_R_INSTR_CG_BEGIN(INSTR_NAME) \
   `INSTR_CG_BEGIN(INSTR_NAME, riscv_amo_instr) \
-    cp_rs1      : coverpoint instr.rs1; \
+    cp_rs1         : coverpoint instr.rs1 { \
+      `DV(ignore_bins zero = {ZERO};) \
+    } \
     cp_rs2      : coverpoint instr.rs2; \
     cp_rd       : coverpoint instr.rd; \
     cp_aq       : coverpoint instr.aq; \
@@ -2113,7 +2115,9 @@ class riscv_instr_cover_group;
 
   // RV64A
   `INSTR_CG_BEGIN(lr_d, riscv_amo_instr)
-    cp_rs1      : coverpoint instr.rs1;
+    cp_rs1         : coverpoint instr.rs1 {
+      `DV(ignore_bins zero = {ZERO};)
+    }
     cp_rd       : coverpoint instr.rd;
     cp_aq       : coverpoint instr.aq;
     cp_rl       : coverpoint instr.rl;
@@ -2152,7 +2156,9 @@ class riscv_instr_cover_group;
 
   // RV32A
   `INSTR_CG_BEGIN(lr_w, riscv_amo_instr)
-    cp_rs1      : coverpoint instr.rs1;
+    cp_rs1         : coverpoint instr.rs1 {
+      `DV(ignore_bins zero = {ZERO};)
+    }
     cp_rd       : coverpoint instr.rd;
     cp_aq       : coverpoint instr.aq;
     cp_rl       : coverpoint instr.rl;
