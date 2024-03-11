@@ -73,6 +73,16 @@ class riscv_amo_instr extends riscv_instr;
     return asm_str.tolower();
   endfunction : convert2asm
 
+
+  // coverage related functons
+  virtual function void update_src_regs(string operands[$]);
+    super.update_src_regs(operands);
+    
+    rl = binary[25];
+    aq = binary[26];
+
+  endfunction : update_src_regs
+
   virtual function void do_copy(uvm_object rhs);
     riscv_amo_instr rhs_;
     super.copy(rhs);
