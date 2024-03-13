@@ -248,7 +248,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   //    virtual address which currently not mapped a valid physical address. Need to do a
   //    memcpy to move data from lower physical address to the place the virtual address map to.
   // TODO: Refactor this part with new reserved GPR
-  virtual function void gen_page_fault_handling_routine(ref string instr[$]);
+  virtual function void gen_page_fault_handling_routine(ref string instr[$], input hart=0);
     int unsigned  level;
     string        load_store_unit;
     bit[XLEN-1:0] bit_mask = '1;
@@ -296,9 +296,9 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                     riscv_page_table_entry#(MODE)::VADDR_SPARE + 12));
 
     // Starting from the root table
-    instr.push_back($sformatf("la x%0d, page_table_0", pte_addr_reg));
+    instr.push_back($sformatf("la x%0d, h%0d_page_table_0", pte_addr_reg, hart));
 
-    instr.push_back("fix_pte:");
+    instr.push_back($sformatf("h%0d_fix_pte:", hart));
     // Get the VPN of the current level
     // Note the VPN under process is on the msb, right shift XLEN - VPN_WIDTH to get the VPN value
     instr.push_back($sformatf("srli x%0d, x%0d, %0d",
@@ -318,11 +318,11 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                     tmp_reg, pte_reg, XLEN - 4));
     instr.push_back($sformatf("srli x%0d, x%0d, %0d",
                     tmp_reg, tmp_reg, XLEN - 3));
-    instr.push_back($sformatf("bne zero, x%0d, fix_leaf_pte", tmp_reg));
+    instr.push_back($sformatf("bne zero, x%0d, h%0d_fix_leaf_pte", tmp_reg, hart));
 
     // Handle link PTE exceptions
     // - If level == 0, change the link PTE to leaf PTE, and finish exception handling
-    instr.push_back($sformatf("beq zero, x%0d, fix_leaf_pte", level_reg));
+    instr.push_back($sformatf("beq zero, x%0d, h%0d_fix_leaf_pte", level_reg, hart));
     // - If level != 0, fix the link PTE, and move to the PTE it points to
     //   - Override the low 10 bits with the correct link PTE setting
     instr.push_back($sformatf("srli x%0d, x%0d, 10", pte_reg, pte_reg));
@@ -342,22 +342,22 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
     instr.push_back($sformatf("srli x%0d, x%0d, %0d",
                     mask_reg, mask_reg, riscv_page_table_entry#(MODE)::VPN_WIDTH));
     //   - Jump to fix the PTE of the next level
-    instr.push_back("j fix_pte");
+    instr.push_back($sformatf("j h%0d_fix_pte", hart));
 
     // fix_leaf_pte: Override the low 10 bits with the correct leaf PTE setting
-    instr.push_back("fix_leaf_pte:");
+    instr.push_back($sformatf("h%0d_fix_leaf_pte:", hart));
     // Use mask to zero out lower 10 bits and unaligned VPN
     instr.push_back($sformatf("not x%0d, x%0d", mask_reg, mask_reg));
     instr.push_back($sformatf("and x%0d, x%0d, x%0d", pte_reg, pte_reg, mask_reg));
     instr.push_back($sformatf("li x%0d, 0x%0x", tmp_reg, valid_leaf_pte.bits));
     instr.push_back($sformatf("or x%0d, x%0d, x%0d", pte_reg, pte_reg, tmp_reg));
     instr.push_back($sformatf("s%0s x%0d, 0(x%0d)", load_store_unit, pte_reg, pte_addr_reg));
-    instr.push_back("j fix_kernel_leaf_pte");
+    instr.push_back($sformatf("j h%0d_fix_kernel_leaf_pte", hart));
 
     // Fix kernel leaf PTE
-    instr.push_back("fix_kernel_leaf_pte:");
+    instr.push_back($sformatf("h%0d_fix_kernel_leaf_pte:", hart));
     // - Load the starting virtual address of the kernel space
-    instr.push_back($sformatf("la x%0d, kernel_instr_start", tmp_reg));
+    instr.push_back($sformatf("la x%0d, h%0d_kernel_instr_start", tmp_reg, hart));
     // TODO: Fix kernel instruction/data pages separatedly
     instr.push_back($sformatf("slli x%0d, x%0d, %0d", tmp_reg, tmp_reg,
                     XLEN - MAX_USED_VADDR_BITS));
@@ -365,7 +365,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                     XLEN - MAX_USED_VADDR_BITS));
     instr.push_back($sformatf("csrr x%0d, 0x%0x # MTVAL", fault_vaddr_reg, MTVAL));
     // - Check if the fault virtual address is in the kernel space
-    instr.push_back($sformatf("bgeu x%0d, x%0d, fix_pte_done", tmp_reg, fault_vaddr_reg));
+    instr.push_back($sformatf("bgeu x%0d, x%0d, h%0d_fix_pte_done", tmp_reg, fault_vaddr_reg, hart));
     // - Set the PTE.u bit to 0 for kernel space PTE
     instr.push_back($sformatf("li x%0d, 0x%0x", tmp_reg, 'h10));
     instr.push_back($sformatf("not x%0d, x%0d", tmp_reg, tmp_reg));
@@ -373,16 +373,16 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
     instr.push_back($sformatf("s%0s x%0d, 0(x%0d)", load_store_unit, pte_reg, pte_addr_reg));
 
     // End of page table fault handling
-    instr.push_back("fix_pte_done:");
+    instr.push_back($sformatf("h%0d_fix_pte_done:", hart));
     // Make sure all outstanding memory access is completed
     instr.push_back("sfence.vma");
     // Randomly decide if run some kernel program before exiting from exception handling
     // Use the low 2 bits of x30 to determine whether to skip it or not.
     instr.push_back($sformatf("slli x30, x30, %0d", XLEN - 2));
-    instr.push_back("beqz x30, fix_pte_ret");
+    instr.push_back($sformatf("beqz x30, h%0d_fix_pte_ret", hart));
     // Randomly decide if set MPRV to 1
     instr.push_back($sformatf("slli x31, x31, %0d", XLEN - 2));
-    instr.push_back("beqz x30, check_mprv");
+    instr.push_back($sformatf("beqz x30, h%0d_check_mprv", hart));
     instr.push_back($sformatf("csrr x%0d, 0x%0x", tmp_reg, MSTATUS));
     instr.push_back($sformatf("li x%0d, 0x%0x", mask_reg, MPRV_BIT_MASK));
     instr.push_back($sformatf("not x%0d, x%0d", mask_reg, mask_reg));
@@ -391,14 +391,14 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
     // Run some kernel mode program before returning from exception handling
     // If MPRV = 0, jump to regular kernel mode program
     // If MPRV = 1, jump to kernel program with U mode mem load/store
-    instr.push_back($sformatf("check_mprv: li x%0d, 0x%0x", mask_reg, MPRV_BIT_MASK));
+    instr.push_back($sformatf("h%0d_check_mprv: li x%0d, 0x%0x", hart, mask_reg, MPRV_BIT_MASK));
     instr.push_back($sformatf("csrr x%0d, 0x%0x", tmp_reg, MSTATUS));
     instr.push_back($sformatf("and x%0d, x%0d, x%0d", tmp_reg, tmp_reg, mask_reg));
-    instr.push_back($sformatf("beqz x%0d, j_smode", tmp_reg));
-    instr.push_back("jal ra, smode_lsu_program");
-    instr.push_back("j fix_pte_ret");
-    instr.push_back("j_smode: jal ra, smode_program");
-    instr.push_back("fix_pte_ret:");
+    instr.push_back($sformatf("beqz x%0d, h%0d_j_smode", tmp_reg, hart));
+    instr.push_back($sformatf("jal ra, h%0d_smode_lsu_program", hart));
+    instr.push_back($sformatf("j h%0d_fix_pte_ret", hart));
+    instr.push_back($sformatf("h%0d_j_smode: jal ra, h%0d_smode_program", hart, hart));
+    instr.push_back($sformatf("h%0d_fix_pte_ret:", hart));
     // Recover the user mode GPR from kernal stack
     pop_gpr_from_kernel_stack(MSTATUS, MSCRATCH, cfg.mstatus_mprv, cfg.sp, cfg.tp, instr);
     instr.push_back("mret");
@@ -434,7 +434,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   endfunction
 
   // Link page table
-  virtual function void process_page_table(output string instr[$]);
+  virtual function void process_page_table(output string instr[$], input hart=0);
     string load_store_unit;
     int pte_addr_offset;
     bit [XLEN-1:0] ubit_mask = '1;
@@ -443,8 +443,8 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
     // Assign the PPN of link PTE to link the page tables together
     foreach(page_table[i]) begin
       if (page_table[i].level == 0) break;
-      instr = {instr, $sformatf("la x%0d, page_table_%0d+2048 # Process PT_%0d",
-                                cfg.gpr[1], i, i)};
+      instr = {instr, $sformatf("la x%0d, h%0d_page_table_%0d+2048 # Process PT_%0d",
+                                cfg.gpr[1], hart, i, i)};
       foreach(page_table[i].pte[j]) begin
         if(j >= SuperLeafPtePerTable) continue;
         pte_addr_offset = (j * PteSize) - 2048;
@@ -458,7 +458,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                    $sformatf("l%0s x%0d, %0d(x%0d)",
                              load_store_unit, cfg.gpr[2], pte_addr_offset, cfg.gpr[1]),
                    // Load the target page table physical address, PPN should be 0
-                   $sformatf("la x%0d, page_table_%0d # Link PT_%0d_PTE_%0d -> PT_%0d", cfg.gpr[0],
+                   $sformatf("la x%0d, h%0d_page_table_%0d # Link PT_%0d_PTE_%0d -> PT_%0d", cfg.gpr[0], hart,
                              get_child_table_id(i, j), i, j, get_child_table_id(i, j)),
                    // Right shift the address for 2 bits to the correct PPN position in PTE
                    $sformatf("srli x%0d, x%0d, 2", cfg.gpr[0], cfg.gpr[0]),
@@ -476,8 +476,8 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
     if (cfg.support_supervisor_mode) begin
       instr = {instr,
                // Process kernel instruction pages
-               $sformatf("la x%0d, kernel_instr_start", cfg.gpr[0]),
-               $sformatf("la x%0d, kernel_instr_end", cfg.gpr[1]),
+               $sformatf("la x%0d, h%0d_kernel_instr_start", cfg.gpr[0], hart),
+               $sformatf("la x%0d, h%0d_kernel_instr_end", cfg.gpr[1], hart),
                // Get the VPN of the physical address
                $sformatf("slli x%0d, x%0d, %0d",
                          cfg.gpr[0], cfg.gpr[0], XLEN - MAX_USED_VADDR_BITS),
@@ -490,7 +490,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                          XLEN - MAX_USED_VADDR_BITS + 12),
                $sformatf("slli x%0d, x%0d, %0d", cfg.gpr[1], cfg.gpr[1], $clog2(XLEN)),
                // Starting from the first 4KB leaf page table
-               $sformatf("la x%0d, page_table_%0d", cfg.gpr[2], get_1st_4k_table_id()),
+               $sformatf("la x%0d, h%0d_page_table_%0d", cfg.gpr[2], hart, get_1st_4k_table_id()),
                $sformatf("add x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[2], cfg.gpr[0]),
                $sformatf("add x%0d, x%0d, x%0d", cfg.gpr[1], cfg.gpr[2], cfg.gpr[1]),
                $sformatf("li x%0d, 0x%0x", cfg.gpr[2], ubit_mask),
@@ -506,7 +506,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                // If not the end of the kernel space, process the next PTE
                $sformatf("ble x%0d, x%0d, 1b", cfg.gpr[0], cfg.gpr[1]),
                // Process kernel data pages
-               $sformatf("la x%0d, kernel_data_start", cfg.gpr[0]),
+               $sformatf("la x%0d, h%0d_kernel_data_start", cfg.gpr[0], hart),
                // Get the VPN of the physical address
                $sformatf("slli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0],
                          XLEN - MAX_USED_VADDR_BITS),
@@ -514,7 +514,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
                          XLEN - MAX_USED_VADDR_BITS + 12),
                $sformatf("slli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], $clog2(XLEN)),
                // Starting from the first 4KB leaf page table
-               $sformatf("la x%0d, page_table_%0d", cfg.gpr[2], get_1st_4k_table_id()),
+               $sformatf("la x%0d, h%0d_page_table_%0d", cfg.gpr[2], hart, get_1st_4k_table_id()),
                $sformatf("add x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[2], cfg.gpr[0]),
                $sformatf("li x%0d, 0x%0x", cfg.gpr[2], ubit_mask),
                // Assume 20 PTEs for kernel data pages

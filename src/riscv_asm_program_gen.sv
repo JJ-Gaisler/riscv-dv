@@ -434,7 +434,7 @@ class riscv_asm_program_gen extends uvm_object;
     core_is_initialized();
     gen_dummy_csr_write(); // TODO add a way to disable xStatus read
     if (riscv_instr_pkg::support_pmp) begin
-      str = {indent, "j main"};
+      str = {indent, $sformatf("j %0smain", hart_prefix(hart))};
       instr_stream.push_back(str);
     end
   endfunction
@@ -794,7 +794,7 @@ class riscv_asm_program_gen extends uvm_object;
     gen_pmp_csr_write(hart);
     // Initialize PTE (link page table based on their real physical address)
     if(cfg.virtual_addr_translation_on) begin
-      page_table_list.process_page_table(instr);
+      page_table_list.process_page_table(instr, hart);
       gen_section(get_label("process_pt", hart), instr);
     end
     // Setup mepc register, jump to init entry
@@ -876,7 +876,7 @@ class riscv_asm_program_gen extends uvm_object;
         cfg.pmp_cfg.gen_pmp_enable_all(cfg.scratch_reg, instr);
       end else begin
         cfg.pmp_cfg.setup_pmp();
-        cfg.pmp_cfg.gen_pmp_instr('{cfg.scratch_reg, cfg.gpr[0]}, instr);
+        cfg.pmp_cfg.gen_pmp_instr('{cfg.scratch_reg, cfg.gpr[0]}, instr, hart);
       end
 
       gen_section(get_label("pmp_setup", hart), instr);
@@ -889,7 +889,7 @@ class riscv_asm_program_gen extends uvm_object;
   virtual function void gen_pmp_csr_write(int hart);
     string instr[$];
     if (riscv_instr_pkg::support_pmp && cfg.pmp_cfg.enable_write_pmp_csr) begin
-      cfg.pmp_cfg.gen_pmp_write_test({cfg.scratch_reg, cfg.pmp_reg[0]}, instr);
+      cfg.pmp_cfg.gen_pmp_write_test({cfg.scratch_reg, cfg.pmp_reg[0]}, instr, hart);
       gen_section(get_label("pmp_csr_write_test", hart), instr);
     end
   endfunction
@@ -1022,7 +1022,7 @@ class riscv_asm_program_gen extends uvm_object;
     // broken when page fault happens.
     gen_signature_handshake(instr, CORE_STATUS, HANDLING_EXCEPTION);
     if(page_table_list != null) begin
-      page_table_list.gen_page_fault_handling_routine(instr);
+      page_table_list.gen_page_fault_handling_routine(instr, hart);
     end else begin
       instr.push_back("nop");
     end
@@ -1260,7 +1260,7 @@ class riscv_asm_program_gen extends uvm_object;
       cfg.pmp_cfg.gen_pmp_exception_routine({cfg.gpr, cfg.scratch_reg, cfg.pmp_reg[0],
                                              cfg.pmp_reg[1]},
                                             INSTRUCTION_ACCESS_FAULT,
-                                            instr);
+                                            instr, hart);
     end
     pop_gpr_from_kernel_stack(MSTATUS, MSCRATCH, cfg.mstatus_mprv, cfg.sp, cfg.tp, instr);
     instr.push_back("mret");
@@ -1276,7 +1276,7 @@ class riscv_asm_program_gen extends uvm_object;
       cfg.pmp_cfg.gen_pmp_exception_routine({cfg.gpr, cfg.scratch_reg, cfg.pmp_reg[0],
                                              cfg.pmp_reg[1]},
                                             LOAD_ACCESS_FAULT,
-                                            instr);
+                                            instr, hart);
     end
     pop_gpr_from_kernel_stack(MSTATUS, MSCRATCH, cfg.mstatus_mprv, cfg.sp, cfg.tp, instr);
     instr.push_back("mret");
@@ -1292,7 +1292,7 @@ class riscv_asm_program_gen extends uvm_object;
       cfg.pmp_cfg.gen_pmp_exception_routine({cfg.gpr, cfg.scratch_reg, cfg.pmp_reg[0],
                                              cfg.pmp_reg[1]},
                                             STORE_AMO_ACCESS_FAULT,
-                                            instr);
+                                            instr, hart);
     end
     pop_gpr_from_kernel_stack(MSTATUS, MSCRATCH, cfg.mstatus_mprv, cfg.sp, cfg.tp, instr);
     instr.push_back("mret");
@@ -1337,7 +1337,7 @@ class riscv_asm_program_gen extends uvm_object;
                                          hart_prefix(hart)));
       end
       foreach(page_table_list.page_table[i]) begin
-        page_table_list.page_table[i].gen_page_table_section(page_table_section);
+        page_table_list.page_table[i].gen_page_table_section(page_table_section, hart);
         instr_stream = {instr_stream, page_table_section};
       end
       if (cfg.use_push_data_section) begin

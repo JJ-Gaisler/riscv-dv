@@ -402,7 +402,7 @@ class riscv_pmp_cfg extends uvm_object;
   // - If MML or MMWP, set stack and signature regions to shared read/write.
   // - Set requested MSECCFG (including RLB).
   // - Set all other addresses and configs.
-  function void gen_pmp_instr(riscv_reg_t scratch_reg[2], ref string instr[$]);
+  function void gen_pmp_instr(riscv_reg_t scratch_reg[2], ref string instr[$], input int hart=0);
     bit [XLEN - 1 : 0] pmp_word;
     bit [XLEN - 1 : 0] cfg_bitmask;
     bit [7 : 0] cfg_byte;
@@ -447,10 +447,10 @@ class riscv_pmp_cfg extends uvm_object;
           pmp_cfg_already_configured[code_entry - 1] = 1'b1;
         end
         // Load the address of the kernel_instr_end into PMP code entry.
-        instr.push_back($sformatf("la x%0d, kernel_instr_end", scratch_reg[0]));
+        instr.push_back($sformatf("la x%0d, h%0d_kernel_instr_end", scratch_reg[0], hart));
         instr.push_back($sformatf("srli x%0d, x%0d, 2", scratch_reg[0], scratch_reg[0]));
         instr.push_back($sformatf("csrw 0x%0x, x%0d", base_pmp_addr + code_entry, scratch_reg[0]));
-        `uvm_info(`gfn, $sformatf("Address of pmp_addr_%d is kernel_instr_end", code_entry),
+        `uvm_info(`gfn, $sformatf("Address of pmp_addr_%d is h%0d_kernel_instr_end", code_entry, hart),
                   UVM_LOW)
         pmp_cfg_already_configured[code_entry] = 1'b1;
 
@@ -608,7 +608,7 @@ class riscv_pmp_cfg extends uvm_object;
                     UVM_LOW);
         end else begin
           // Add the offset to the base address to get the other pmpaddr values.
-          instr.push_back($sformatf("la x%0d, main", scratch_reg[0]));
+          instr.push_back($sformatf("la x%0d, h%0d_main", scratch_reg[0], hart));
           instr.push_back($sformatf("li x%0d, 0x%0x", scratch_reg[1], pmp_cfg[i].offset));
           instr.push_back($sformatf("add x%0d, x%0d, x%0d",
                                     scratch_reg[0], scratch_reg[0], scratch_reg[1]));
@@ -655,7 +655,7 @@ class riscv_pmp_cfg extends uvm_object;
   //                  to better clarify where the multitude of jumps are actually going to.
   function void gen_pmp_exception_routine(riscv_reg_t scratch_reg[7],
                                           exception_cause_t fault_type,
-                                          ref string instr[$]);
+                                          ref string instr[$], input int hart=0);
     // scratch_reg[0] : temporary storage
     // scratch_reg[1] : &pmpaddr[i]
     // scratch_reg[2] : &pmpcfg[i]
@@ -924,7 +924,7 @@ class riscv_pmp_cfg extends uvm_object;
                  // We must first check whether the access fault was in the trap handler in case
                  // we previously tried to load an instruction in a PMP entry that did not have
                  // read permissions.
-                 $sformatf("la x%0d, main", scratch_reg[4]),
+                 $sformatf("la x%0d, h%0d_main", scratch_reg[4], hart),
                  $sformatf("bge x%0d, x%0d, 40f", scratch_reg[0], scratch_reg[4]),
                  // In case MEPC is before main, then the load access fault probably happened in a
                  // trap handler and we should just quit the test.
@@ -1007,7 +1007,7 @@ class riscv_pmp_cfg extends uvm_object;
   // This function is used for a directed PMP test to test writes to all the pmpcfg and pmpaddr
   // CSRs to test that writes succeed or fail appropriately.
   virtual function void gen_pmp_write_test(riscv_reg_t scratch_reg[2],
-                                           ref string instr[$]);
+                                           ref string instr[$], input hart=0);
 
     bit [11:0] pmp_addr;
     bit [11:0] pmpcfg_addr;
@@ -1020,7 +1020,7 @@ class riscv_pmp_cfg extends uvm_object;
       // pmpaddr[i] doesn't interfere with the safe region.
       `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(pmp_val, pmp_val[31] == 1'b0;)
       instr.push_back($sformatf("li x%0d, 0x%0x", scratch_reg[0], pmp_val));
-      instr.push_back($sformatf("la x%0d, main", scratch_reg[1]));
+      instr.push_back($sformatf("la x%0d, h%0d_main", scratch_reg[1], hart));
       instr.push_back($sformatf("add x%0d, x%0d, x%0d",
                                 scratch_reg[0], scratch_reg[0], scratch_reg[1]));
       // Write the randomized address to pmpaddr[i].
