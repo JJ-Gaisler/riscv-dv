@@ -47,7 +47,7 @@ int max_interrupt_vector_num = 16;
 bit support_pmp = 1; //edit
 
 // Enhanced physical memory protection support
-bit support_epmp = 1;
+bit support_epmp = 0;
 
 // Debug mode support
 bit support_debug_mode = 1; //edit
@@ -92,7 +92,7 @@ parameter int MAX_LMUL = 8;
 // ----------------------------------------------------------------------------
 
 // Number of harts
-parameter int NUM_HARTS = 1;
+parameter int NUM_HARTS = 2;
 
 // ----------------------------------------------------------------------------
 // Previleged CSR implementation
