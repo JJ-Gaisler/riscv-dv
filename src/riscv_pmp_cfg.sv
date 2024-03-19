@@ -17,7 +17,7 @@
 class riscv_pmp_cfg extends uvm_object;
 
   // default to a single PMP region
-  rand int pmp_num_regions = 1;
+  int pmp_num_regions = 1;
 
   // default to granularity of 0 (4 bytes grain)
   int pmp_granularity = 0;
@@ -202,7 +202,8 @@ class riscv_pmp_cfg extends uvm_object;
     inst = uvm_cmdline_processor::get_inst();
     if (inst.get_arg_value("+pmp_num_regions=", s)) begin
       pmp_num_regions = s.atoi();
-      pmp_num_regions.rand_mode(0);
+    end else begin
+      pmp_num_regions = $urandom_range(1, 16);
     end
     get_int_arg_value("+pmp_granularity=", pmp_granularity);
     get_bool_arg_value("+pmp_randomize=", pmp_randomize);
@@ -577,7 +578,9 @@ class riscv_pmp_cfg extends uvm_object;
     end
 
     foreach (pmp_cfg[i]) begin
-      pmp_id = i / cfg_per_csr;
+      // when XLEN==64 pmp regs are 0, 2, 4...
+      // when XLEN==32 pmp regs are 0, 1, 2, 3...
+      pmp_id = (i / cfg_per_csr)*(XLEN/32);
       cfg_byte = {pmp_cfg[i].l, pmp_cfg[i].zero, pmp_cfg[i].a,
                   pmp_cfg[i].x, pmp_cfg[i].w,    pmp_cfg[i].r};
       `uvm_info(`gfn, $sformatf("cfg_byte: 0x%02x", cfg_byte), UVM_LOW)
