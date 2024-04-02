@@ -134,8 +134,8 @@ class riscv_zfa_instr extends riscv_floating_point_instr;
 
   function bit[6:0] get_opcode();
     case (instr_name) inside
-      FLI_H, FLI_S, FLI_D, FLI_Q, FMINM_H: get_opcode = 7'b1111000;
-      FMINM_S, FMINM_D,FMINM_Q, FMAXM_H, FMAXM_S, FMAXM_D, FMAXM_Q: get_opcode = 7'b1010011;
+      FLI_H, FLI_S, FLI_D, FLI_Q: get_opcode = 7'b1111000;
+      FMINM_H, FMINM_S, FMINM_D,FMINM_Q, FMAXM_H, FMAXM_S, FMAXM_D, FMAXM_Q: get_opcode = 7'b1010011;
       FROUND_H, FROUNDNX_H, FROUND_S, FROUNDNX_S, FROUND_D, FROUNDNX_D, FROUND_Q, FROUNDNX_Q: get_opcode = 7'b1010011;
       FCVTMOD_W_D: get_opcode = 7'b1010011;
       FMVH_X_D: get_opcode = 7'b1010011;
