@@ -45,13 +45,13 @@ class riscv_page_table#(satp_mode_t MODE = SV39) extends uvm_object;
 
   // Generate the page table section in the output assembly program
   // Basically it's like a data section with all PTE binaries.
-  function void gen_page_table_section(output string instr[$]);
+  function void gen_page_table_section(output string instr[$], input int hart = 0);
     string str;
     this.gen_page_table_binary();
     // Align the page table to 4K boundary
     instr = {instr,
              ".align 12",
-             $sformatf("%0s:", get_name())};
+             $sformatf("h%0d_%0s:", hart, get_name())};
     foreach(pte_binary[i]) begin
       if (i % 8 == 0) begin
         if (XLEN == 64) begin

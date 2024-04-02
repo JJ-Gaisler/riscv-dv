@@ -199,7 +199,7 @@ class riscv_illegal_instr extends uvm_object;
   }
 
   constraint zbc_extension_c {
-    if (RV32ZBB inside {supported_isa}) {
+    if (RV32ZBC inside {supported_isa}) {
       if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
         !(opcode inside {7'b0110011});
       }
@@ -210,6 +210,38 @@ class riscv_illegal_instr extends uvm_object;
     if (RV32ZBS inside {supported_isa}) {
       if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
         !(opcode inside {7'b0110011, 7'b0010011});
+      }
+    }
+  }
+
+  constraint zbkb_extension_c {
+    if (RV32ZBKB inside {supported_isa}) {
+      if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
+        !(opcode inside {7'b0110011, 7'b0010011, 7'b0111011, 7'b0110111});
+      }
+    }
+  }
+
+  constraint zbkc_extension_c {
+    if (RV32ZBKC inside {supported_isa}) {
+      if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
+        !(opcode inside {7'b0110011});
+      }
+    }
+  }
+
+  constraint zbkX_extension_c {
+    if (RV32ZBKX inside {supported_isa}) {
+      if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
+        !(opcode inside {7'b0110011});
+      }
+    }
+  }
+
+  constraint zfa_extension_c {
+    if (RV32ZFA inside {supported_isa}) {
+      if (exception inside {kIllegalFunc3, kIllegalFunc7}) {
+        !(opcode inside {7'b1111000, 7'b1010011});
       }
     }
   }
@@ -349,10 +381,15 @@ class riscv_illegal_instr extends uvm_object;
     }
   }
 
+
   constraint illegal_func3_c {
     solve opcode before func3;
     if (!compressed) {
       if (exception == kIllegalFunc3) {
+        (opcode == 7'b0110011) -> (!(func3 inside {3'b100, 3'b001, 3'b011, 3'b100, 3'b010}));
+        (opcode == 7'b0110111) -> (!(func3 inside {3'b111}));
+        (opcode == 7'b1111000) -> (!(func3 inside {3'b000, 3'b010}));
+        (opcode == 7'b1010011) -> (!(func3 inside {3'b000, 3'b001, 3'b010, 3'b011, 3'b100, 3'b101}));
         (opcode == 7'b1100111) -> (func3 != 3'b000);
         (opcode == 7'b1100011) -> (func3 inside {3'b010, 3'b011});
 
@@ -366,10 +403,15 @@ class riscv_illegal_instr extends uvm_object;
         (opcode == 7'b0001111) -> (!(func3 inside {3'b000, 3'b001}));
         (opcode == 7'b1110011) -> (func3 == 3'b100);
         (opcode == 7'b0011011) -> (!(func3 inside {3'b000, 3'b001, 3'b101}));
-        (opcode == 7'b0111011) -> (func3 inside {3'b010, 3'b011});
+        (opcode == 7'b0111011) -> (func3 inside {3'b010, 3'b011, 3'b100});
         opcode inside {7'b1100111, 7'b1100011, 7'b0000011, 7'b0100011,
-                       7'b0001111, 7'b1110011, 7'b0011011, 7'b0111011};
+                       7'b0001111, 7'b1110011, 7'b0011011, 7'b0111011, 
+                       7'b1111000, 7'b1010011, 7'b0010011, 7'b0110011};
       } else {
+        (opcode == 7'b0110011) -> (func3 inside {3'b100, 3'b001, 3'b011, 3'b100, 3'b010});
+        (opcode == 7'b0110111) -> (func3 inside {3'b111});
+        (opcode == 7'b1111000) -> (func3 inside {3'b000, 3'b010});
+        (opcode == 7'b1010011) -> (func3 inside {3'b000, 3'b001, 3'b010, 3'b011, 3'b100, 3'b101});
         (opcode == 7'b1100111) -> (func3 == 3'b000);
         (opcode == 7'b1100011) -> (!(func3 inside {3'b010, 3'b011}));
         if (XLEN == 32) {
@@ -382,14 +424,15 @@ class riscv_illegal_instr extends uvm_object;
         (opcode == 7'b0001111) -> (func3 inside {3'b000, 3'b001});
         (opcode == 7'b1110011) -> (func3 != 3'b100);
         (opcode == 7'b0011011) -> (func3 inside {3'b000, 3'b001, 3'b101});
-        (opcode == 7'b0111011) -> (!(func3 inside {3'b010, 3'b011}));
+        (opcode == 7'b0111011) -> (!(func3 inside {3'b010, 3'b011, 3'b100}));
       }
     }
   }
 
   constraint has_func7_c {
     solve opcode before func7;
-    if (((opcode == 7'b0010011) && (func3 inside {3'b001, 3'b101})) ||
+    if (((opcode == 7'b0011011) && (func3 inside {3'b001, 3'b101})) ||
+        ((opcode == 7'b0010011) && (func3 inside {3'b001, 3'b101})) ||
         (opcode inside {7'b0110011, 7'b0111011})) {
       has_func7 == 1'b1;
     } else {
@@ -399,7 +442,8 @@ class riscv_illegal_instr extends uvm_object;
 
   constraint has_func3_c {
     solve opcode before func7;
-    if ((opcode inside {7'b0110111, 7'b1101111, 7'b0010111})) {
+    if ((opcode inside {7'b1101111, 7'b0010111}) || 
+        (opcode == 7'b0110111 && func3 inside {3'b111})) {
       has_func3 == 1'b0;
     } else {
       has_func3 == 1'b1;
@@ -409,12 +453,12 @@ class riscv_illegal_instr extends uvm_object;
   constraint illegal_func7_c {
     if (!compressed) {
       if (exception == kIllegalFunc7) {
-        !(func7 inside {7'd0, 7'b0100000, 7'd1});
+        !(func7 inside {7'd0, 7'b0100000, 7'd1, 7'b0000100, 7'b0110100, 7'b0000101, 7'b0110000, 7'b0010100});
         if (opcode == 7'b0001001) { // SLLI, SRLI, SRAI
           !(func7[6:1] inside {6'd0, 6'b010000});
         }
       } else {
-        func7 inside {7'd0, 7'b0100000, 7'd1};
+        func7 inside {7'd0, 7'b0100000, 7'd1, 7'b0000100, 7'b0110100, 7'b0000101, 7'b0110000, 7'b0010100};
       }
     }
   }
@@ -437,6 +481,9 @@ class riscv_illegal_instr extends uvm_object;
         legal_c00_opcode = {legal_c00_opcode, 3'b011, 3'b111}; // flw, fsw
         legal_c10_opcode = {legal_c10_opcode, 3'b011, 3'b111}; // flwsp, fswsp
       end
+    end
+    if (riscv_instr_pkg::RV32ZFA inside {riscv_instr_pkg::supported_isa}) begin
+      legal_opcode = {legal_opcode, 7'b1111000};
     end
     if (riscv_instr_pkg::RV64I inside {riscv_instr_pkg::supported_isa}) begin
       legal_opcode = {legal_opcode, 7'b0011011};

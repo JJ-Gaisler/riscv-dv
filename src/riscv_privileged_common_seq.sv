@@ -206,7 +206,7 @@ class riscv_privileged_common_seq extends uvm_sequence;
     instrs.push_back($sformatf("csrw 0x%0x, x%0d # satp", SATP, cfg.gpr[0]));
     satp_ppn_mask = '1 >> (XLEN - satp.get_field_by_name("PPN").bit_width);
     // Load the root page table physical address
-    instrs.push_back($sformatf("la x%0d, page_table_0", cfg.gpr[0]));
+    instrs.push_back($sformatf("la x%0d, %0spage_table_0", cfg.gpr[0], hart_prefix(hart)));
     // Right shift to get PPN at 4k granularity
     instrs.push_back($sformatf("srli x%0d, x%0d, 12", cfg.gpr[0], cfg.gpr[0]));
     instrs.push_back($sformatf("li   x%0d, 0x%0x", cfg.gpr[1], satp_ppn_mask));

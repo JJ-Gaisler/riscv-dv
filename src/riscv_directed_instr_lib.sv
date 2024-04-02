@@ -492,14 +492,16 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
     D
   } fli_siz_e;
 
-  int unsigned num_of_avail_regs = 10;
+  int unsigned num_of_avail_regs = 20;
   rand int unsigned   num_of_instr;
   rand fli_siz_e   fli_siz;
   rand bit [4:0]  init_val_type[];
+  rand bit [4:0]  fd_reg[];
   riscv_zfa_instr  init_instr[];
 
   constraint init_val_c {
     init_val_type.size() == num_of_avail_regs;
+    fd_reg.size() == num_of_avail_regs;
     num_of_instr inside {[15:30]};
   }
 
@@ -524,6 +526,7 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
           init_instr[i].instr_name = FLI_S;
         end
         init_instr[i].format = I_FORMAT;
+        init_instr[i].fd = fd_reg[i];
         init_instr[i].imm_tbl_idx = init_val_type[i];
         instr_list.push_back(init_instr[i]);
       end
@@ -540,3 +543,49 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
 
 endclass : riscv_zfa_numeric_corner_stream
 
+// Strees the numeric corner cases of float zfa operations
+class f_flags_instr_stream extends riscv_directed_instr_stream;
+  rand f_rounding_mode_t  rm_random;
+  riscv_instr tmp_instr;
+  int unsigned num_of_avail_regs = 1;
+  int tmp_imm;
+
+  `uvm_object_utils(f_flags_instr_stream)
+  `uvm_object_new
+
+  constraint avail_regs_c {
+    unique {avail_regs};
+    foreach(avail_regs[i]) {
+      !(avail_regs[i] inside {cfg.reserved_regs});
+      avail_regs[i] != ZERO;
+    }
+  }
+
+  function void pre_randomize();
+    avail_regs = new[num_of_avail_regs];
+    super.pre_randomize();
+  endfunction : pre_randomize
+
+  function void post_randomize();
+
+    //save new fssr data to avail register
+    tmp_instr = riscv_instr::get_instr(ADDI);
+    cfg.fcsr_rm = rm_random;
+    tmp_imm = cfg.fcsr_rm << 5;
+    tmp_instr.imm = tmp_imm;
+    tmp_instr.update_imm_str();
+    tmp_instr.rs1 = ZERO;
+    tmp_instr.rd = avail_regs[0];
+    instr_list.push_back(tmp_instr);
+
+    //read/write fssr
+    tmp_instr = riscv_instr::get_instr(CSRRW);
+    tmp_instr.csr = FCSR;
+    tmp_instr.rs1 = avail_regs[0];
+    tmp_instr.rd  = avail_regs[0];
+    instr_list.push_back(tmp_instr);
+
+    super.post_randomize();
+  endfunction
+
+endclass : f_flags_instr_stream

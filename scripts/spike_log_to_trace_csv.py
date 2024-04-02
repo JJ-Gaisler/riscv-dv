@@ -34,8 +34,10 @@ RD_IMP_RE = re.compile(
     r"(core\s+\d+:\s+)?(?P<pri>\d)\s+0x(?P<addr>[a-f0-9]+?)\s+\((?P<bin>.*?)\)\s+((?P<csr>\S+)\s+0x(?P<csr_val>[a-f0-9]+))?\s+(?P<reg>[xf]\s*\d*?)\s+0x(?P<val>[a-f0-9]+)")
 CORE_RE = re.compile(
     r"core\s+\d+:\s+0x(?P<addr>[a-f0-9]+?)\s+\(0x(?P<bin>.*?)\)\s+(?P<instr>.*?)$")
+AMO_RE = re.compile(
+    r"(?P<rd>[a-z0-9]+?),+(?P<rs2>[a-z0-9]+?),\((?P<rs1>[a-z0-9]+)\)")
 ADDR_RE = re.compile(
-    r"(?P<rd>[a-z0-9]+?),(?P<imm>[\-0-9]+?)\((?P<rs1>[a-z0-9]+)\)")
+    r"(?P<rd>[a-z0-9]+?),(?P<imm>[\-0-9]{0,}?)\((?P<rs1>[a-z0-9]+)\)")
 ILLE_RE = re.compile(r"trap_illegal_instruction")
 
 LOGGER = logging.getLogger()
@@ -51,14 +53,27 @@ def process_instr(trace):
         else:
             imm = str(int(imm, 16))
         trace.operand = trace.operand[0:idx + 1] + imm
-    # Properly format operands of all instructions of the form:
-    # <instr> <reg1> <imm>(<reg2>)
+    # Properly format operands of all instructions of the form (atomics):
+    # <instr> <reg1> ,<reg2>, (<reg3>)
     # The operands should be converted into CSV as:
-    # "<reg1>,<reg2>,<imm>"
-    m = ADDR_RE.search(trace.operand)
+    # "<reg1>,<reg2>,<reg3>"
+    m = AMO_RE.search(trace.operand)
     if m:
         trace.operand = "{},{},{}".format(
-            m.group("rd"), m.group("rs1"), m.group("imm"))
+            m.group("rd"), m.group("rs1"), m.group("rs2"))
+    else:            
+        # Properly format operands of all instructions of the form:
+        # <instr> <reg1> <imm>(<reg2>)
+        # The operands should be converted into CSV as:
+        # "<reg1>,<reg2>,<imm>"
+        m = ADDR_RE.search(trace.operand)
+        if m:
+            if(m.group("imm") == ""): # for atomic instr
+                trace.operand = "{},{}".format(
+                    m.group("rd"), m.group("rs1"))
+            else:
+                trace.operand = "{},{},{}".format(
+                    m.group("rd"), m.group("rs1"), m.group("imm"))
 
 
 def read_spike_instr(match, full_trace):
@@ -125,7 +140,7 @@ def read_spike_trace(path, full_trace):
     # true. Otherwise, we are in state EFFECT if instr is not None, otherwise we
     # are in state INSTR.
 
-    end_trampoline_re = re.compile(r'core.*: 0x0*1010 ')
+    end_trampoline_re = re.compile(r'core.*: 0x0*c0000010 ') #Temporary fix to work with modified spike
 
     in_trampoline = True
     instr = None

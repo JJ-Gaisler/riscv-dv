@@ -27,7 +27,6 @@ class riscv_debug_rom_gen extends riscv_asm_program_gen;
   string debug_end[$];
   string str[$];
   string dret;
-  int hart;
 
   `uvm_object_utils(riscv_debug_rom_gen)
 

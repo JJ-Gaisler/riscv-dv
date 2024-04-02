@@ -72,12 +72,6 @@ class riscv_instr_cov_test extends uvm_test;
             end
             post_process_trace();
             if (trace["instr"] inside {"li", "ret", "la"}) continue;
-            if (uvm_is_match("amo*",trace["instr"]) ||
-                uvm_is_match("lr*" ,trace["instr"]) ||
-                uvm_is_match("sc*" ,trace["instr"])) begin
-              // TODO: Enable functional coverage for AMO test
-              continue;
-            end
             if (!sample()) begin
               if (report_illegal_instr) begin
                `uvm_error(`gfn, $sformatf("Found unexpected illegal instr: %0s [%0s]",
@@ -133,6 +127,7 @@ class riscv_instr_cov_test extends uvm_test;
         instr = riscv_instr::get_instr(instr_name);
         if ((instr.group inside {RV32I, RV32M, RV32C, RV64I, RV64M, RV64C,
                                  RV32F, RV64F, RV32D, RV64D, RV32B, RV64B,
+                                 RV32A, RV64A,
                                  RV32ZBA, RV32ZBB, RV32ZBC, RV32ZBS,
                                  RV64ZBA, RV64ZBB, RV64ZBC, RV64ZBS,
                                  RV32ZCB, RV64ZCB, RV32ZFH, RV64ZFH,
