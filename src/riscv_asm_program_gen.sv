@@ -73,7 +73,7 @@ class riscv_asm_program_gen extends uvm_object;
     gen_program_header();
     for (int hart = 0; hart < cfg.num_of_harts; hart++) begin
       string sub_program_name[$];
-      instr_stream.push_back($sformatf("h%0d_start:", hart));
+      instr_stream.push_back($sformatf("%0sstart:", hart_prefix(hart)));
       if (!cfg.bare_program_mode) begin
         setup_misa();
         // Create all page tables
@@ -336,7 +336,7 @@ class riscv_asm_program_gen extends uvm_object;
     end
     gen_section("_start", str);
     for (int hart = 0; hart < cfg.num_of_harts; hart++) begin
-      instr_stream.push_back($sformatf("%0d: la x%0d, h%0d_start", hart, cfg.scratch_reg, hart));
+      instr_stream.push_back($sformatf("%0d: la x%0d, %0sstart", hart, cfg.scratch_reg, hart_prefix(hart)));
       instr_stream.push_back($sformatf("jalr x0, x%0d, 0", cfg.scratch_reg));
     end
   endfunction

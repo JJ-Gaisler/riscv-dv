@@ -448,10 +448,10 @@ class riscv_pmp_cfg extends uvm_object;
           pmp_cfg_already_configured[code_entry - 1] = 1'b1;
         end
         // Load the address of the kernel_instr_end into PMP code entry.
-        instr.push_back($sformatf("la x%0d, h%0d_kernel_instr_end", scratch_reg[0], hart));
+        instr.push_back($sformatf("la x%0d, %0skernel_instr_end", scratch_reg[0], hart_prefix(hart)));
         instr.push_back($sformatf("srli x%0d, x%0d, 2", scratch_reg[0], scratch_reg[0]));
         instr.push_back($sformatf("csrw 0x%0x, x%0d", base_pmp_addr + code_entry, scratch_reg[0]));
-        `uvm_info(`gfn, $sformatf("Address of pmp_addr_%d is h%0d_kernel_instr_end", code_entry, hart),
+        `uvm_info(`gfn, $sformatf("Address of pmp_addr_%d is %0skernel_instr_end", code_entry, hart_prefix(hart)),
                   UVM_LOW)
         pmp_cfg_already_configured[code_entry] = 1'b1;
 
@@ -611,7 +611,7 @@ class riscv_pmp_cfg extends uvm_object;
                     UVM_LOW);
         end else begin
           // Add the offset to the base address to get the other pmpaddr values.
-          instr.push_back($sformatf("la x%0d, h%0d_main", scratch_reg[0], hart));
+          instr.push_back($sformatf("la x%0d, %0smain", scratch_reg[0], hart_prefix(hart)));
           instr.push_back($sformatf("li x%0d, 0x%0x", scratch_reg[1], pmp_cfg[i].offset));
           instr.push_back($sformatf("add x%0d, x%0d, x%0d",
                                     scratch_reg[0], scratch_reg[0], scratch_reg[1]));
@@ -927,7 +927,7 @@ class riscv_pmp_cfg extends uvm_object;
                  // We must first check whether the access fault was in the trap handler in case
                  // we previously tried to load an instruction in a PMP entry that did not have
                  // read permissions.
-                 $sformatf("la x%0d, h%0d_main", scratch_reg[4], hart),
+                 $sformatf("la x%0d, %0smain", scratch_reg[4], hart_prefix(hart)),
                  $sformatf("bge x%0d, x%0d, 40f", scratch_reg[0], scratch_reg[4]),
                  // In case MEPC is before main, then the load access fault probably happened in a
                  // trap handler and we should just quit the test.
@@ -1023,7 +1023,7 @@ class riscv_pmp_cfg extends uvm_object;
       // pmpaddr[i] doesn't interfere with the safe region.
       `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(pmp_val, pmp_val[31] == 1'b0;)
       instr.push_back($sformatf("li x%0d, 0x%0x", scratch_reg[0], pmp_val));
-      instr.push_back($sformatf("la x%0d, h%0d_main", scratch_reg[1], hart));
+      instr.push_back($sformatf("la x%0d, %0smain", scratch_reg[1], hart_prefix(hart)));
       instr.push_back($sformatf("add x%0d, x%0d, x%0d",
                                 scratch_reg[0], scratch_reg[0], scratch_reg[1]));
       // Write the randomized address to pmpaddr[i].
