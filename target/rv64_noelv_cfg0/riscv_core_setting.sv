@@ -42,13 +42,13 @@ mtvec_mode_t supported_interrupt_mode[$] = {DIRECT, VECTORED};
 int max_interrupt_vector_num = 16;
 
 // Physical memory protection support
-bit support_pmp = 1; //edit
+bit support_pmp = 1;
 
 // Enhanced physical memory protection support
 bit support_epmp = 0;
 
 // Debug mode support
-bit support_debug_mode = 1; //edit
+bit support_debug_mode = 1;
 
 // Support delegate trap to user mode
 bit support_umode_trap = 0;
@@ -57,7 +57,7 @@ bit support_umode_trap = 0;
 bit support_sfence = 1;
 
 // Support unaligned load/store
-bit support_unaligned_load_store = 1'b0;//1'b1; //1-Not supported by NOEL-V
+bit support_unaligned_load_store = 1'b0;
 
 // GPR setting
 parameter int NUM_FLOAT_GPR = 32;

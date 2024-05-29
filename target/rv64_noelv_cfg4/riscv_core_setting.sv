@@ -24,16 +24,14 @@ parameter int XLEN = 64;
 parameter satp_mode_t SATP_MODE = SV39; 
 
 // Supported Privileged mode
-privileged_mode_t supported_privileged_mode[] = {USER_MODE, SUPERVISOR_MODE, MACHINE_MODE};
+privileged_mode_t supported_privileged_mode[] = {USER_MODE, MACHINE_MODE};
 
 // Unsupported instructions
 riscv_instr_name_t unsupported_instr[];
 
 // ISA supported by the processor
 riscv_instr_group_t supported_isa[$] = {RV32I, RV32M, RV64I, RV64M, RV32C, RV64C, RV32A, RV64A,
-                                        RV32F, RV64F, RV32D, RV64D, RV32X, RV64ZBA, RV64ZBB, RV64ZBKB,
-                                        RV64ZBC, RV64ZBS, RV32ZBA,RV32ZBB, RV32ZBKB, RV32ZBC, RV32ZBKC,
-                                        RV32ZBKX, RV32ZBS, RV32ZCB, RV64ZCB, RV32ZFH, RV64ZFH, RV32ZFA, RV64ZFA};
+                                        RV32D, RV64D, RV32X, RV32ZCB, RV64ZCB};
 // Interrupt mode support
 mtvec_mode_t supported_interrupt_mode[$] = {DIRECT, VECTORED};
 
@@ -42,13 +40,13 @@ mtvec_mode_t supported_interrupt_mode[$] = {DIRECT, VECTORED};
 int max_interrupt_vector_num = 16;
 
 // Physical memory protection support
-bit support_pmp = 1; //edit
+bit support_pmp = 1;
 
 // Enhanced physical memory protection support
 bit support_epmp = 0;
 
 // Debug mode support
-bit support_debug_mode = 1; //edit
+bit support_debug_mode = 1;
 
 // Support delegate trap to user mode
 bit support_umode_trap = 0;
@@ -57,7 +55,7 @@ bit support_umode_trap = 0;
 bit support_sfence = 1;
 
 // Support unaligned load/store
-bit support_unaligned_load_store = 1'b0;//1'b1; //1-Not supported by NOEL-V
+bit support_unaligned_load_store = 1'b0;
 
 // GPR setting
 parameter int NUM_FLOAT_GPR = 32;

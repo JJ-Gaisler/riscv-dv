@@ -609,7 +609,7 @@ class riscv_asm_program_gen extends uvm_object;
       randcase
         1: init_floating_point_gpr_with_spf(i);
         RV64D inside {supported_isa}: init_floating_point_gpr_with_dpf(i);
-        RV64ZFH inside {supported_isa}: init_floating_point_gpr_with_hpf(i);
+        RV64ZFH inside {supported_isa} && cfg.enable_zfh_extension: init_floating_point_gpr_with_hpf(i);
       endcase
     end
     // Initialize rounding mode of FCSR

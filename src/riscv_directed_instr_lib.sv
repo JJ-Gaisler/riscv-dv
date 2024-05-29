@@ -514,13 +514,13 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
   endfunction : pre_randomize
 
   function void post_randomize();
-    if (RV32ZFA inside {supported_isa}) begin
+    if (cfg.enable_zfa_extension && RV32ZFA inside {supported_isa}) begin
       init_instr = new[num_of_avail_regs];
       foreach (init_val_type[i]) begin
         init_instr[i] = new();
         if(fli_siz == D && RV32D inside {supported_isa}) begin
           init_instr[i].instr_name = FLI_D;
-        end else if (fli_siz == H && RV32ZFH inside {supported_isa}) begin
+        end else if (fli_siz == H && cfg.enable_zfh_extension && RV32ZFH inside {supported_isa}) begin
           init_instr[i].instr_name = FLI_H;
         end else begin // fli_siz == S
           init_instr[i].instr_name = FLI_S;
@@ -537,8 +537,8 @@ class riscv_zfa_numeric_corner_stream extends riscv_directed_instr_stream;
         randomize_gpr(instr);
         instr_list.push_back(instr);
       end
+      super.post_randomize();
     end
-    super.post_randomize();
   endfunction
 
 endclass : riscv_zfa_numeric_corner_stream
@@ -567,23 +567,25 @@ class f_flags_instr_stream extends riscv_directed_instr_stream;
   endfunction : pre_randomize
 
   function void post_randomize();
+    if (RV32F inside {supported_isa}) begin
 
-    //save new fssr data to avail register
-    tmp_instr = riscv_instr::get_instr(ADDI);
-    cfg.fcsr_rm = rm_random;
-    tmp_imm = cfg.fcsr_rm << 5;
-    tmp_instr.imm = tmp_imm;
-    tmp_instr.update_imm_str();
-    tmp_instr.rs1 = ZERO;
-    tmp_instr.rd = avail_regs[0];
-    instr_list.push_back(tmp_instr);
+      //save new fssr data to avail register
+      tmp_instr = riscv_instr::get_instr(ADDI);
+      cfg.fcsr_rm = rm_random;
+      tmp_imm = cfg.fcsr_rm << 5;
+      tmp_instr.imm = tmp_imm;
+      tmp_instr.update_imm_str();
+      tmp_instr.rs1 = ZERO;
+      tmp_instr.rd = avail_regs[0];
+      instr_list.push_back(tmp_instr);
 
-    //read/write fssr
-    tmp_instr = riscv_instr::get_instr(CSRRW);
-    tmp_instr.csr = FCSR;
-    tmp_instr.rs1 = avail_regs[0];
-    tmp_instr.rd  = avail_regs[0];
-    instr_list.push_back(tmp_instr);
+      //read/write fssr
+      tmp_instr = riscv_instr::get_instr(CSRRW);
+      tmp_instr.csr = FCSR;
+      tmp_instr.rs1 = avail_regs[0];
+      tmp_instr.rd  = avail_regs[0];
+      instr_list.push_back(tmp_instr);
+    end
 
     super.post_randomize();
   endfunction

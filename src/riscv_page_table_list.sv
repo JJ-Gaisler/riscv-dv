@@ -39,7 +39,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   privileged_mode_t privileged_mode = USER_MODE;
 
   // Starting physical address of the program.
-  bit [XLEN-1:0] start_pa = 'h8000_0000;
+  bit [XLEN-1:0] start_pa = 'h0000_0000;
 
   // Num of page table per level
   int unsigned num_of_page_table[];
@@ -103,7 +103,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   // or data. For non-leaf PTE, the PPN should map to the physical address of the next PTE.
   // Take SV39 for example: (PteSize = 8B)
   // Table size is 4KB, PteSize=8B, entry count = 4K/8 = 512
-  // Level 2: Root table, 2 entries, PTE[0] and PTE[1] is non-leaf PTE, PTE[2] is leaf PTE, all
+  // Level 2: Root table, 2 entries, PTE[1] and PTE[2] is non-leaf PTE, PTE[0] is leaf PTE, all
   //          other PTEs are invalid, totalling 1 page table with 3 PTEs at this level.
   // Level 1: Two page tables, map to PTE[0] and PTE[1] of the root table.
   //          Each table has 512 entries, PTE[0], PTE[1] are non-leaf PTE, cover 4MB memory
@@ -130,12 +130,12 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
       foreach(page_table[i].pte[j]) begin
         if(page_table[i].level > 0) begin
           // Superpage
-          if (j < LinkPtePerTable) begin
-            // First few super pages are link PTE to the next level
-            $cast(page_table[i].pte[j], valid_link_pte.clone());
-          end else if (j < SuperLeafPtePerTable + LinkPtePerTable) begin
+          if (j < SuperLeafPtePerTable) begin
             // Non-link superpage table entry
             $cast(page_table[i].pte[j], valid_leaf_pte.clone());
+          end else if (j < SuperLeafPtePerTable + LinkPtePerTable) begin
+            // First few super pages are link PTE to the next level
+            $cast(page_table[i].pte[j], valid_link_pte.clone());
           end else begin
             // Invalid unused PTEs
             page_table[i].pte[j] = riscv_page_table_entry#(MODE)::type_id::

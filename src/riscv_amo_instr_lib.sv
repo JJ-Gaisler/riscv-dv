@@ -112,40 +112,42 @@ class riscv_lr_sc_instr_stream extends riscv_amo_base_instr_stream;
   endfunction
 
   virtual function void gen_amo_instr();
-    riscv_instr_name_t allowed_lr_instr[];
-    riscv_instr_name_t allowed_sc_instr[];
-    if (RV32A inside {supported_isa}) begin
-      allowed_lr_instr = {LR_W};
-      allowed_sc_instr = {SC_W};
+    if ((RV32A inside {supported_isa}) || (RV64A inside {supported_isa})) begin
+      riscv_instr_name_t allowed_lr_instr[];
+      riscv_instr_name_t allowed_sc_instr[];
+      if (RV32A inside {supported_isa}) begin
+        allowed_lr_instr = {LR_W};
+        allowed_sc_instr = {SC_W};
+      end
+      if (RV64A inside {supported_isa}) begin
+        allowed_lr_instr = {allowed_lr_instr, LR_D};
+        allowed_sc_instr = {allowed_sc_instr, SC_D};
+      end
+      lr_instr = riscv_instr::get_rand_instr(.include_instr({allowed_lr_instr}));
+      sc_instr = riscv_instr::get_rand_instr(.include_instr({allowed_sc_instr}));
+      `DV_CHECK_RANDOMIZE_WITH_FATAL(lr_instr,
+        rs1 == rs1_reg[0];
+        if (reserved_rd.size() > 0) {
+          !(rd inside {reserved_rd});
+        }
+        if (cfg.reserved_regs.size() > 0) {
+          !(rd inside {cfg.reserved_regs});
+        }
+        rd != rs1_reg[0];
+      )
+      `DV_CHECK_RANDOMIZE_WITH_FATAL(sc_instr,
+        rs1 == rs1_reg[0];
+        if (reserved_rd.size() > 0) {
+          !(rd inside {reserved_rd});
+        }
+        if (cfg.reserved_regs.size() > 0) {
+          !(rd inside {cfg.reserved_regs});
+        }
+        rd != rs1_reg[0];
+      )
+      instr_list.push_back(lr_instr);
+      instr_list.push_back(sc_instr);
     end
-    if (RV64A inside {supported_isa}) begin
-      allowed_lr_instr = {allowed_lr_instr, LR_D};
-      allowed_sc_instr = {allowed_sc_instr, SC_D};
-    end
-    lr_instr = riscv_instr::get_rand_instr(.include_instr({allowed_lr_instr}));
-    sc_instr = riscv_instr::get_rand_instr(.include_instr({allowed_sc_instr}));
-    `DV_CHECK_RANDOMIZE_WITH_FATAL(lr_instr,
-      rs1 == rs1_reg[0];
-      if (reserved_rd.size() > 0) {
-        !(rd inside {reserved_rd});
-      }
-      if (cfg.reserved_regs.size() > 0) {
-        !(rd inside {cfg.reserved_regs});
-      }
-      rd != rs1_reg[0];
-    )
-    `DV_CHECK_RANDOMIZE_WITH_FATAL(sc_instr,
-      rs1 == rs1_reg[0];
-      if (reserved_rd.size() > 0) {
-        !(rd inside {reserved_rd});
-      }
-      if (cfg.reserved_regs.size() > 0) {
-        !(rd inside {cfg.reserved_regs});
-      }
-      rd != rs1_reg[0];
-    )
-    instr_list.push_back(lr_instr);
-    instr_list.push_back(sc_instr);
   endfunction
 
   // section 8.3 Eventual Success of Store-Conditional Instructions
@@ -191,20 +193,22 @@ class riscv_amo_instr_stream extends riscv_amo_base_instr_stream;
   `uvm_object_new
 
   virtual function void gen_amo_instr();
-    amo_instr = new[num_amo];
-    foreach (amo_instr[i]) begin
-      amo_instr[i] = riscv_instr::get_rand_instr(.include_category({AMO}));
-      `DV_CHECK_RANDOMIZE_WITH_FATAL(amo_instr[i],
-        if (reserved_rd.size() > 0) {
-          !(rd inside {reserved_rd});
-        }
-        if (cfg.reserved_regs.size() > 0) {
-          !(rd inside {cfg.reserved_regs});
-        }
-        rs1 inside {rs1_reg};
-        !(rd inside {rs1_reg});
-      )
-      instr_list.push_front(amo_instr[i]);
+    if ((RV32A inside {supported_isa}) || (RV64A inside {supported_isa})) begin
+      amo_instr = new[num_amo];
+      foreach (amo_instr[i]) begin
+        amo_instr[i] = riscv_instr::get_rand_instr(.include_category({AMO}));
+        `DV_CHECK_RANDOMIZE_WITH_FATAL(amo_instr[i],
+          if (reserved_rd.size() > 0) {
+            !(rd inside {reserved_rd});
+          }
+          if (cfg.reserved_regs.size() > 0) {
+            !(rd inside {cfg.reserved_regs});
+          }
+          rs1 inside {rs1_reg};
+          !(rd inside {rs1_reg});
+        )
+        instr_list.push_front(amo_instr[i]);
+      end
     end
   endfunction
 
