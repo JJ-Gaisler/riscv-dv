@@ -215,7 +215,7 @@ class riscv_floating_point_instr extends riscv_instr;
         //`DV_CHECK_FATAL(operands.size() == 2)
         if (has_fs1) begin
           fs1 = get_fpr(operands[1]);
-          fs1_value = get_gpr_state(operands[1]);
+          fs1_value = get_fpr_state(operands[1]);
         end else if (has_rs1) begin
           rs1 = get_gpr(operands[1]);
           rs1_value = get_gpr_state(operands[1]);
@@ -225,7 +225,7 @@ class riscv_floating_point_instr extends riscv_instr;
         `DV_CHECK_FATAL(operands.size() == 3)
         // FSW rs2 is fp
         fs2 = get_fpr(operands[0]);
-        fs2_value = get_gpr_state(operands[0]);
+        fs2_value = get_fpr_state(operands[0]);
         rs1 = get_gpr(operands[1]);
         rs1_value = get_gpr_state(operands[1]);
         get_val(operands[2], imm);
@@ -246,21 +246,21 @@ class riscv_floating_point_instr extends riscv_instr;
         end
         if(category != CSR) begin
           fs1 = get_fpr(operands[1]);
-          fs1_value = get_gpr_state(operands[1]);
+          fs1_value = get_fpr_state(operands[1]);
           if (has_fs2) begin
             fs2 = get_fpr(operands[2]);
-            fs2_value = get_gpr_state(operands[2]);
+            fs2_value = get_fpr_state(operands[2]);
           end
         end
       end
       R4_FORMAT: begin
         `DV_CHECK_FATAL((operands.size() == 4 || operands.size() == 5))
         fs1 = get_fpr(operands[1]);
-        fs1_value = get_gpr_state(operands[1]);
+        fs1_value = get_fpr_state(operands[1]);
         fs2 = get_fpr(operands[2]);
-        fs2_value = get_gpr_state(operands[2]);
+        fs2_value = get_fpr_state(operands[2]);
         fs3 = get_fpr(operands[3]);
-        fs3_value = get_gpr_state(operands[3]);
+        fs3_value = get_fpr_state(operands[3]);
       end
       default: `uvm_fatal(`gfn, $sformatf("Unsupported format %0s", format))
     endcase
@@ -270,7 +270,7 @@ class riscv_floating_point_instr extends riscv_instr;
     get_val(val_str, gpr_state[reg_name], .hex(1));
     if (has_fd) begin
       fd = get_fpr(reg_name);
-      fd_value = get_gpr_state(reg_name);
+      fd_value = get_fpr_state(reg_name);
     end else if (has_rd) begin
       rd = get_gpr(reg_name);
       rd_value = get_gpr_state(reg_name);
@@ -290,6 +290,17 @@ class riscv_floating_point_instr extends riscv_instr;
       `uvm_fatal(`gfn, $sformatf("Cannot convert %0s to FPR", str))
     end
   endfunction : get_fpr
+
+  virtual function bit [XLEN-1:0] get_fpr_state(string name);
+    if (name inside {"zero", "x0"}) begin
+      return 0;
+    end else if (gpr_state.exists(name)) begin
+      return gpr_state[name];
+    end else begin
+      `uvm_warning(`gfn, $sformatf("Cannot find FPR state: %0s", name))
+      return 0;
+    end
+  endfunction : get_fpr_state
 
   virtual function void pre_sample();
     super.pre_sample();

@@ -447,6 +447,9 @@
 
   function riscv_reg_t get_gpr(input string str);
     str = str.toupper();
+    if(str == "X0") begin // X0 is same as ZERO reg
+      str = "ZERO";
+    end
     if (!gpr_enum::from_name(str, get_gpr)) begin
       `uvm_fatal(`gfn, $sformatf("Cannot convert %0s to GPR", str))
     end
