@@ -164,12 +164,13 @@ def collect_cov(out, cfg, cwd):
     else:
         trace_log = ("{}/{}_trace_log".format(out, argv.iss))
         run_cmd("find {} -name \"*.log\" | sort > {}".format(argv.dir, trace_log))
+        run_cmd("find {} -name \"*.csv\" | sort >> {}".format(argv.dir, trace_log))
     with open(trace_log) as f:
         for line in f:
             line = line.rstrip()
             log_list.append(line)
             csv = line[0:-4] + ".csv"
-            csv_list.append(csv)
+            csv_list.append(csv) if csv not in csv_list else csv_list
     if argv.steps == "all" or re.match("csv", argv.steps):
         for i in range(len(log_list)):
             log = log_list[i]
