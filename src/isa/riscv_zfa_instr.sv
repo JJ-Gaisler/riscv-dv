@@ -45,9 +45,9 @@ class riscv_zfa_instr extends riscv_floating_point_instr;
           has_fs1 = 1'b0;
           has_fs2 = 1'b0;
         end else if (instr_name inside {FMVH_X_D, FMVH_X_Q}) begin
-          has_rs1 = 1'b1;
-          has_fs1 = 1'b0;
           has_fs2 = 1'b0;
+          has_fd  = 1'b0;
+          has_rd  = 1'b1;
           // cte rs2 value
         end
         // FMINM_H, FMINM_S, FMINM_D, FMINM_Q, FMAXM_H, FMAXM_S, FMAXM_D, FMAXM_Q use default values
@@ -92,7 +92,7 @@ class riscv_zfa_instr extends riscv_floating_point_instr;
         end else if (instr_name inside {FMVP_Q_X, FMVP_D_X}) begin
           asm_str_final = $sformatf("%0s%0s, %0s, %0s", asm_str, fd.name(), rs1.name(), rs2.name());
         end else if (instr_name inside {FMVH_X_D, FMVH_X_Q}) begin
-          asm_str_final = $sformatf("%0s%0s, %0s", asm_str, fd.name(), rs1.name());
+          asm_str_final = $sformatf("%0s%0s, %0s", asm_str, rd.name(), fs1.name());
         end else if (instr_name inside {FMINM_H, FMINM_S, FMINM_D, FMINM_Q, FMAXM_H, FMAXM_S, FMAXM_D, FMAXM_Q}) begin
           asm_str_final = $sformatf("%0s%0s, %0s, %0s", asm_str, fd.name(), fs1.name(), fs2.name());
         end

@@ -205,7 +205,9 @@
     cp_rs1         : coverpoint instr.rs1 { \
       `DV(ignore_bins zero = {ZERO};) \
     } \
-    cp_rs2      : coverpoint instr.rs2; \
+    cp_rs2         : coverpoint instr.rs2 { \
+      `DV(ignore_bins zero = {ZERO};) \
+    } \
     cp_rd       : coverpoint instr.rd; \
     cp_aq       : coverpoint instr.aq; \
     cp_rl       : coverpoint instr.rl; \
