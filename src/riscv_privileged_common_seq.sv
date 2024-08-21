@@ -57,14 +57,6 @@ class riscv_privileged_common_seq extends uvm_sequence;
     // update MIE in XSTATUS to enable interrupts just before mret
     mstatus.set_field("MIE", cfg.enable_interrupt);
     regs_status.push_back(mstatus);
-    if(mode == SUPERVISOR_MODE) begin
-      sstatus.set_field("MIE", cfg.enable_interrupt);
-      regs_status.push_back(sstatus);
-    end
-    if(mode == USER_MODE) begin
-      ustatus.set_field("MIE", cfg.enable_interrupt);
-      regs_status.push_back(ustatus);
-    end
     gen_csr_instr(regs_status, instrs);
 
     // Use mret/sret to switch to the target privileged mode
