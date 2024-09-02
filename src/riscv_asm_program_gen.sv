@@ -459,7 +459,7 @@ class riscv_asm_program_gen extends uvm_object;
         RVV                  : misa[MISA_EXT_V] = 1'b1;
         RV32X, RV64X         : misa[MISA_EXT_X] = 1'b1;
         RV32ZBA, RV32ZBB, RV32ZBKB, RV32ZBC, RV32ZBKC, RV32ZBKX, RV32ZBS,
-        RV64ZBA, RV64ZBB, RV64ZBKB, RV64ZBC,                     RV64ZBS : ; // No Misa bit for Zb* extensions
+        RV64ZBA, RV64ZBB, RV64ZBKB, RV64ZBC,                     RV64ZBS : ; // No Misa bit for Zb* extensions INDIVIDUALLY
         RV32ZCB, RV64ZCB : ;
         RV32ZFH, RV64ZFH : ;
         RV32ZFA, RV64ZFA : ;
@@ -467,6 +467,11 @@ class riscv_asm_program_gen extends uvm_object;
                                    supported_isa[i].name()))
       endcase
     end
+    // B ext calculation
+    if((RV32ZBA inside {supported_isa} && RV32ZBB inside {supported_isa} && RV32ZBS inside {supported_isa}) ||
+       (RV64ZBA inside {supported_isa} && RV64ZBB inside {supported_isa} && RV64ZBS inside {supported_isa})) {
+      misa[MISA_EXT_B] = 1'b1;
+    }
     if (SUPERVISOR_MODE inside {supported_privileged_mode}) begin
       misa[MISA_EXT_S] = 1'b1;
     end
