@@ -469,9 +469,9 @@ class riscv_asm_program_gen extends uvm_object;
     end
     // B ext calculation
     if((RV32ZBA inside {supported_isa} && RV32ZBB inside {supported_isa} && RV32ZBS inside {supported_isa}) ||
-       (RV64ZBA inside {supported_isa} && RV64ZBB inside {supported_isa} && RV64ZBS inside {supported_isa})) {
+       (RV64ZBA inside {supported_isa} && RV64ZBB inside {supported_isa} && RV64ZBS inside {supported_isa})) begin
       misa[MISA_EXT_B] = 1'b1;
-    }
+    end
     if (SUPERVISOR_MODE inside {supported_privileged_mode}) begin
       misa[MISA_EXT_S] = 1'b1;
     end
