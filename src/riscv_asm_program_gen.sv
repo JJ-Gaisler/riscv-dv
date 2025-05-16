@@ -1,3 +1,4 @@
+//verilog_format: off
 /*
  * Copyright 2018 Google LLC
  * Copyright 2020 Andes Technology Co., Ltd.
@@ -463,6 +464,7 @@ class riscv_asm_program_gen extends uvm_object;
         RV32ZCB, RV64ZCB : ;
         RV32ZFH, RV64ZFH : ;
         RV32ZFA, RV64ZFA : ;
+        RV32NOELV, RV64NOELV : ;
         default : `uvm_fatal(`gfn, $sformatf("%0s is not yet supported",
                                    supported_isa[i].name()))
       endcase

@@ -117,18 +117,20 @@ package riscv_instr_pkg;
     RV64ZBKB,
     RV64ZBKX,
     RV32ZCB,
-    RV64ZCB, 
-    RV32ZCMP,    
-    RV32ZCMT,   
+    RV64ZCB,
+    RV32ZCMP,
+    RV32ZCMT,
     RV32ZISSLPCFI,
     RV32ZMMUL,
     RV64ZMMUL,
-    RV32ZFH, 
+    RV32ZFH,
     RV64ZFH,
-    RV32ZFA, 
+    RV32ZFA,
     RV64ZFA,
     RV32X,
-    RV64X
+    RV64X,
+    RV32NOELV,
+    RV64NOELV
   } riscv_instr_group_t;
 
   typedef enum {

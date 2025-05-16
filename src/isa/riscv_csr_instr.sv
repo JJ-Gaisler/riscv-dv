@@ -46,6 +46,7 @@ class riscv_csr_instr extends riscv_instr;
     }
   }
 
+  //verilator-lint off
   constraint csr_csrrw {
     if (instr_name == CSRRW || instr_name == CSRRWI) {
       write_csr == 1'b1;
