@@ -76,4 +76,5 @@
     +enable_zbkb_extension=1
     +enable_zbkc_extension=1
     +enable_floating_point=1
+    +enable_swar_extension=1
   rtl_test: core_base_test

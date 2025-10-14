@@ -11,6 +11,7 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
                                            privileged_mode_t mode);
     gen_timer_section(interrupt_handler_instr, mode);
     gen_plic_section(interrupt_handler_instr, mode);
+    gen_swar_init_section(interrupt_handler_instr, mode);
   endfunction
   ;
 
@@ -106,6 +107,30 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
         $sformatf(
         "sw x%0d, 4(x%0d) # %0s", cfg.gpr[0], cfg.gpr[1], "set mtimecmp(63 dt 32) to max value"));
     interrupt_handler_instr.push_back($sformatf("1:"));
+  endfunction
+
+  virtual function void gen_swar_init_section(ref string instr_queue[$], privileged_mode_t mode);
+    // We need a switch for enable_swar to be able to always keep RV32SWAR in
+    // the config file.
+    if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar_extension) begin
+      // TODO: Add custom csr write here that we use to enable swar (none exist
+      // right now afaik)
+
+      // If we have stateen we need to allow all modes to access swar
+      if (RV32SMSTATEEN inside {supported_isa}) begin
+        // set C and stateen for lower priv mode
+        instr_queue.push_back($sformatf("li %s, 1 << 63 | 1", cfg.gpr[0]));
+        instr_queue.push_back($sformatf("csrsi mstateen0, %s", cfg.gpr[0]));
+        if (RV32SSTATEEN inside {supported_isa}) begin
+          if (RV32H inside {supported_isa}) begin
+            instr_queue.push_back($sformatf("csrsi hstateen0, %s", cfg.gpr[0]));
+          end
+          if (SUPERVISOR_MODE inside {supported_privileged_mode}) begin
+            instr_queue.push_back($sformatf("csrsi sstateen0, %s", cfg.gpr[0]));
+          end
+        end
+      end
+    end
   endfunction
 
 
@@ -204,3 +229,297 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
   endfunction
 
 endclass
+
+class riscv_swar_instr extends riscv_instr;
+  `uvm_object_utils(riscv_swar_instr)
+
+  function new(string name = "");
+    super.new(name);
+  endfunction : new
+
+  // Only a single instruction
+  virtual function void set_rand_mode();
+    super.set_rand_mode();
+    has_rd  = 1'b1;
+    has_rs2 = 1'b1;
+    has_rs1 = 1'b1;
+    has_imm = 1'b0;
+  endfunction
+
+  function void pre_randomize();
+    super.pre_randomize();
+  endfunction
+
+  virtual function bit is_supported(riscv_instr_gen_config cfg);
+    return (cfg.enable_swar_extension && (RV32SWAR inside { supported_isa }));
+  endfunction : is_supported
+
+  virtual function bit [6:0] get_func7();
+    case (instr_name) inside
+      SWAR : get_func7 = 7'b0000000;
+      default : get_func7 = super.get_func7();
+    endcase
+  endfunction
+
+  virtual function bit [2:0] get_func3();
+    case (instr_name) inside
+      SWAR : get_func3 = 3'b000;
+      default : get_func3 = super.get_func3();
+    endcase
+  endfunction
+
+  function bit[6:0] get_opcode();
+    case (instr_name) inside
+      SWAR   : get_opcode = 7'b0101011;
+      default : get_opcode = super.get_opcode();
+    endcase
+  endfunction : get_opcode
+
+  virtual function string convert2bin(string prefix = "");
+    string binary = "";
+
+    case (format)
+      R_FORMAT: begin
+        binary = $sformatf("%8h", {get_func7(), rs2, rs1, get_func3(), rd, get_opcode()});
+      end
+
+    default: begin
+      if (binary == "") begin
+        binary = super.convert2bin(prefix);
+      end
+    end
+
+    endcase // case (format)
+  endfunction : convert2bin
+
+endclass
+
+class swar_instr_stream extends riscv_directed_instr_stream;
+
+  typedef enum bit [7:0] {
+    COR1b   = 8'b00000100,
+    COR2b   = 8'b00000101,
+    COR3b   = 8'b00000110,
+    COR4b   = 8'b00000111,
+    DEMR2b  = 8'b00001001,
+    DEMR3b  = 8'b00001010,
+    DEMR4b  = 8'b00001011,
+    DEMC2b  = 8'b00001101,
+    DEMC3b  = 8'b00001110,
+    DEMC4b  = 8'b00001111,
+    DEMC2bG = 8'b00000001,
+    DEMC3bG = 8'b00000010,
+    DEMC4bG = 8'b00000011,
+    SC1b    = 8'b00010000,
+    SC2b    = 8'b00100000,
+    SC3b    = 8'b00110000,
+    SC4b    = 8'b01000000,
+    SWADD   = 8'b00000000,
+    SWSUB   = 8'b00001000,
+    SWMUL   = 8'b00001100,
+    SWSHR   = 8'b10000000
+  } swar_opcode_t;
+
+  typedef struct packed {
+    swar_opcode_t select;
+    bit sign;
+    bit red;
+    bit sat;
+    bit norm;
+    bit audio;
+    bit video;
+    bit alu;
+    bit [5:0] dyn_rng;
+    bit restr;
+    bit refblk;
+    bit ctrl_clear;
+  } swar_csr_t;
+
+
+  // --- Feature flags for cfg 0 ---
+  bit supports_swcorrel = 1;
+  bit supports_swdemod  = 1;
+  bit supports_swsincos = 1;
+  bit supports_swaudio  = 1;
+  bit supports_swvideo  = 1;
+  bit supports_swalu    = 0;
+  bit supports_swksplit = 0;
+  bit supports_swacc    = 1;
+  bit supports_swaccseq = 0;
+  int swidth   = 5;
+  int swlanes  = 16;
+  int swawidth = 64;
+
+  bit[11:0] CSR_SWAR_CTRLSTAT = 12'h801;
+  bit[11:0] CSR_SWAR_ACC_SEL = 12'h802;
+  bit[11:0] CSR_SWAR_ACC_VAL = 12'h803;
+
+  swar_opcode_t supported_opcodes[$];
+
+  typedef enum int {
+    ACCUMULATE_WRITE,
+    ACCUMULATE_READ,
+    ACCUMULATE_SELECT,
+    SWAR_CALC,
+    SWAR_CTRL,
+    OTHER
+  } swar_op_t;
+
+  int unsigned num_of_avail_regs = 10;
+  rand int unsigned   r_num_of_instr;
+  rand swar_op_t      r_op;
+  rand bit            r_illegal_swar_op;
+  rand bit[4:0]       r_acc_sel;
+  rand swar_csr_t     r_swar;
+  rand int            r_reg;
+  rand int            r_num_of_swar_calc;
+
+  constraint avail_regs_c {
+    unique {avail_regs};
+    foreach(avail_regs[i]) {
+      !(avail_regs[i] inside {cfg.reserved_regs});
+      avail_regs[i] != ZERO;
+    }
+  }
+  constraint r_reg_c {
+    r_reg inside {0, num_of_avail_regs};
+  }
+
+  // Register instruction stream with uvm factory
+  `uvm_object_utils(swar_instr_stream)
+
+  function void pre_randomize();
+    avail_regs = new[num_of_avail_regs];
+    super.pre_randomize();
+  endfunction : pre_randomize
+
+  function new(string name = "swar_instr_stream");
+    super.new(name);
+
+    // This logic now correctly populates the queue when the object is created.
+    if (supports_swcorrel) begin
+      supported_opcodes.push_back(COR1b);
+      supported_opcodes.push_back(COR2b);
+      supported_opcodes.push_back(COR3b);
+      supported_opcodes.push_back(COR4b);
+    end
+    if (supports_swdemod) begin
+      supported_opcodes.push_back(DEMR2b);
+      supported_opcodes.push_back(DEMR3b);
+      supported_opcodes.push_back(DEMR4b);
+      supported_opcodes.push_back(DEMC2b);
+      supported_opcodes.push_back(DEMC3b);
+      supported_opcodes.push_back(DEMC4b);
+      supported_opcodes.push_back(DEMC2bG);
+      supported_opcodes.push_back(DEMC3bG);
+      supported_opcodes.push_back(DEMC4bG);
+    end
+    if (supports_swsincos) begin
+      supported_opcodes.push_back(SC1b);
+      supported_opcodes.push_back(SC2b);
+      supported_opcodes.push_back(SC3b);
+      supported_opcodes.push_back(SC4b);
+    end
+    if (supports_swvideo || supports_swaudio || supports_swalu) begin
+      supported_opcodes.push_back(SWADD);
+      supported_opcodes.push_back(SWSUB);
+      supported_opcodes.push_back(SWMUL);
+      supported_opcodes.push_back(SWSHR);
+    end
+  endfunction
+
+
+  constraint opcode_c {
+    solve r_illegal_swar_op before r_swar.select;
+
+    if (!r_illegal_swar_op)
+      (r_swar.select inside {supported_opcodes});
+    else
+      !(r_swar.select inside {supported_opcodes});
+  }
+
+  // Selector should be a valid value and we only need to use select values
+  // that can have any values (mod operation).
+  constraint acc_sel_c {
+    (r_acc_sel % (swawidth / XLEN) == 0) && r_acc_sel inside {[0:swlanes*2]};
+  }
+
+  // Don't allow the operation if we don't have an accumulator
+  constraint acc_available_c {
+    !(r_op inside {ACCUMULATE_SELECT, ACCUMULATE_READ, ACCUMULATE_WRITE});
+  }
+
+  // Define the relationship between the opcode and the feature bits.
+  constraint features_c {
+    solve r_swar.select before r_swar.audio, r_swar.video, r_swar.alu;
+
+    (r_swar.select inside {SWADD, SWSUB, SWMUL}) ->
+    // one of the audio/video/alu flags must be set.
+    { (r_swar.audio + r_swar.video + r_swar.alu) == 1; }
+  }
+
+
+  // function void post_randomize();
+  //   if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar) begin
+  //     init_instr = new[num_of_avail_regs];
+  //
+  //     //read/write fssr
+  //     tmp_instr = riscv_instr::get_instr(CSRRW);
+  //     tmp_instr.csr = 12'h7c0;
+  //     tmp_instr.rs1 = avail_regs[0];
+  //     tmp_instr.rd = avail_regs[0];
+  //     instr_list.push_back(tmp_instr);
+  //     instr_list.push_back($sformatf(".4byte 0x%4h", {get_func6(), get_c_gpr(rs1), imm[0], imm[1],
+  //                                 get_c_gpr(rd), get_c_opcode()}));
+  //
+  //     super.post_randomize();
+  //   end
+  //
+  // endfunction
+
+  function void post_randomize();
+    riscv_instr tmp_instr;
+    for (int i = 0; i < r_num_of_instr; i++) begin
+      if (r_op == OTHER) begin
+        riscv_instr instr = riscv_instr::get_rand_instr(
+          .include_category({ARITHMETIC, RV32F, RV32D, LOAD, STORE, JUMP}));
+        randomize_gpr(instr);
+        instr_list.push_back(instr);
+      end else if (r_op == ACCUMULATE_WRITE) begin
+        tmp_instr = riscv_instr::get_instr(CSRRW);
+        tmp_instr.csr = CSR_SWAR_ACC_VAL;
+        // Any random value suffices
+        tmp_instr.rs1 = avail_regs[r_reg];
+        tmp_instr.rd = avail_regs[r_reg];
+        instr_list.push_back(tmp_instr);
+      end else if (r_op == ACCUMULATE_READ) begin
+        tmp_instr = riscv_instr::get_instr(CSRRW);
+        tmp_instr.csr = CSR_SWAR_ACC_VAL;
+        tmp_instr.rs1 = ZERO;
+        tmp_instr.rd = avail_regs[r_reg];
+        instr_list.push_back(tmp_instr);
+      end else if (r_op == ACCUMULATE_SELECT) begin
+        tmp_instr = riscv_instr::get_instr(CSRRW);
+        tmp_instr.csr = CSR_SWAR_ACC_SEL;
+        tmp_instr.rs1 = ZERO;
+        // We can get away with this if swlanes is < 16
+        if (swlanes >= 16)
+          `uvm_fatal("SWAR GEN", "Immediate not big enough for accumulator select");
+        tmp_instr.imm = r_acc_sel;
+        tmp_instr.rd = avail_regs[r_reg];
+        instr_list.push_back(tmp_instr);
+      end else if (r_op == SWAR_CALC) begin
+        riscv_swar_instr swar_instr[];
+        swar_instr = new[r_num_of_swar_calc];
+        foreach (swar_instr[i]) begin
+          swar_instr[i] = new();
+          randomize_gpr(swar_instr[i]);
+          instr_list.push_back(swar_instr[i]);
+        end
+      end
+    end
+    super.post_randomize();
+  endfunction
+endclass
+
+

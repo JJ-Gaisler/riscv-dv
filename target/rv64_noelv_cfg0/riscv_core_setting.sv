@@ -21,7 +21,7 @@
 parameter int XLEN = 64;
 
 // Parameter for SATP mode, set to BARE if address translation is not supported
-parameter satp_mode_t SATP_MODE = SV39;
+parameter satp_mode_t SATP_MODE = SV48;
 
 // Supported Privileged mode
 privileged_mode_t supported_privileged_mode[] = {USER_MODE, SUPERVISOR_MODE, MACHINE_MODE};
@@ -34,7 +34,8 @@ riscv_instr_group_t supported_isa[$] = {RV32I, RV32M, RV64I, RV64M, RV32C, RV64C
                                         RV32F, RV64F, RV32D, RV64D, RV32X, RV64ZBA, RV64ZBB, RV64ZBKB,
                                         RV64ZBC, RV64ZBS, RV32ZBA,RV32ZBB, RV32ZBKB, RV32ZBC, RV32ZBKC,
                                         RV32ZBKX, RV32ZBS, RV32ZCB, RV64ZCB, RV32ZFH, RV64ZFH, RV32ZFA, RV64ZFA,
-                                        RV32NOELV, RV64NOELV};
+                                        RV32NOELV, RV64NOELV, RV32H, RV64H, RV32SMSTATEEN, RV64SMSTATEEN,
+                                        RV32SSTATEEN, RV64SSTATEEN, RV32SWAR, RV64SWAR };
 // Interrupt mode support
 mtvec_mode_t supported_interrupt_mode[$] = {DIRECT, VECTORED};
 

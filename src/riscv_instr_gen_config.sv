@@ -271,6 +271,7 @@ class riscv_instr_gen_config extends uvm_object;
   bit                    enable_zcb_extension;
   bit                    enable_zfh_extension;
   bit                    enable_zfa_extension;
+  bit                    enable_swar_extension;
 
   b_ext_group_t          enable_bitmanip_groups[] = {ZBB, ZBS, ZBP, ZBE, ZBF, ZBC, ZBR, ZBM, ZBT,
                                                      ZB_TMP};
@@ -554,6 +555,7 @@ class riscv_instr_gen_config extends uvm_object;
     `uvm_field_int(enable_zcb_extension, UVM_DEFAULT)
     `uvm_field_int(enable_zfh_extension, UVM_DEFAULT)
     `uvm_field_int(enable_zfa_extension, UVM_DEFAULT)
+    `uvm_field_int(enable_swar_extension, UVM_DEFAULT)
     `uvm_field_int(use_push_data_section, UVM_DEFAULT)
   `uvm_object_utils_end
 
@@ -630,6 +632,7 @@ class riscv_instr_gen_config extends uvm_object;
     get_bool_arg_value("+enable_zcb_extension=", enable_zcb_extension);
     get_bool_arg_value("+enable_zfh_extension=", enable_zfh_extension);
     get_bool_arg_value("+enable_zfa_extension=", enable_zfa_extension);
+    get_bool_arg_value("+enable_swar_extension=", enable_swar_extension);
     cmdline_enum_processor #(b_ext_group_t)::get_array_values("+enable_bitmanip_groups=",
                                                               1'b0, enable_bitmanip_groups);
     if(inst.get_arg_value("+boot_mode=", boot_mode_opts)) begin
