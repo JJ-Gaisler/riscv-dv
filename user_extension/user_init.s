@@ -8,6 +8,10 @@
 
 .equ START_PA, 0x00000000
 
+.macro swar rd, rs2, rs1
+# R type: .insn r opcode7, funct3, funct7, rd, rs1, rs2
+.insn r 0x2b, 0x0, 0x0, \rd, \rs1, \rs2
+.endm
 
 # Set up RW page for the PLIC to not fail load and store in S-mode
 # otherwise an interrupt can not be cleared.

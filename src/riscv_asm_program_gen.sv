@@ -323,6 +323,11 @@ class riscv_asm_program_gen extends uvm_object;
 
   virtual function void gen_program_header();
     string str[$];
+    if (cfg.enable_swar_extension) begin
+      instr_stream.push_back(".macro swar rd, rs2, rs1");
+      instr_stream.push_back(".insn r 0x2b, 0x0, 0x0, \\rd, \\rs1, \\rs2");
+      instr_stream.push_back(".endm");
+    end
     instr_stream.push_back(".include \"user_define.h\"");
     instr_stream.push_back(".globl _start");
     instr_stream.push_back(".section .text");
