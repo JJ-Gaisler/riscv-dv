@@ -110,11 +110,9 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
   endfunction
 
   virtual function void gen_swar_init_section(ref string instr_queue[$], privileged_mode_t mode);
-    // We need a switch for enable_swar to be able to always keep RV32SWAR in
-    // the config file.
     if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar_extension) begin
-      // TODO: Add custom csr write here that we use to enable swar (none exist
-      // right now afaik)
+      instr_queue.push_back($sformatf("li %s, 1 << %d", cfg.gpr[0], XLEN - 1));
+      instr_queue.push_back($sformatf("csrsi mstateen0, %s", cfg.gpr[0]));
 
       // If we have stateen we need to allow all modes to access swar
       if (RV32SMSTATEEN inside {supported_isa}) begin
@@ -214,7 +212,6 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
       li_instr.rd = avail_regs[0];
       li_instr.pseudo_instr_name = LI;
       li_instr.imm_str = $sformatf("0x%0x", r_feature);
-      $display(li_instr);
       instr_list.push_back(li_instr);
 
       //read/write fssr
@@ -244,6 +241,7 @@ class riscv_swar_instr extends riscv_instr;
     has_rs2 = 1'b1;
     has_rs1 = 1'b1;
     has_imm = 1'b0;
+    format = R_FORMAT;
   endfunction
 
   function void pre_randomize();
@@ -290,7 +288,13 @@ class riscv_swar_instr extends riscv_instr;
     end
 
     endcase // case (format)
+    return binary;
   endfunction : convert2bin
+
+  virtual function string convert2asm(string prefix = "");
+    string asm_str;
+    asm_str = {convert2bin(".4byte "), " #SWAR no GCC support: ", asm_str};
+  endfunction
 
 endclass
 
@@ -361,18 +365,18 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     ACCUMULATE_READ,
     ACCUMULATE_SELECT,
     SWAR_CALC,
-    SWAR_CTRL,
     OTHER
   } swar_op_t;
 
-  int unsigned num_of_avail_regs = 10;
+  int unsigned num_of_avail_regs = 4;
   rand int unsigned   r_num_of_instr;
   rand swar_op_t      r_op;
   rand bit            r_illegal_swar_op;
   rand bit[4:0]       r_acc_sel;
   rand swar_csr_t     r_swar;
-  rand int            r_reg;
-  rand int            r_num_of_swar_calc;
+  rand int unsigned   r_reg;
+  rand int unsigned   r_num_of_swar_calc;
+  rand int unsigned   r_reconfig_ratio;
 
   constraint avail_regs_c {
     unique {avail_regs};
@@ -381,20 +385,45 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       avail_regs[i] != ZERO;
     }
   }
-  constraint r_reg_c {
-    r_reg inside {0, num_of_avail_regs};
-  }
-
-  // Register instruction stream with uvm factory
-  `uvm_object_utils(swar_instr_stream)
 
   function void pre_randomize();
     avail_regs = new[num_of_avail_regs];
     super.pre_randomize();
   endfunction : pre_randomize
 
+
+  constraint r_alu_c {
+    // solve r_op before r_num_of_swar_calc;
+    // Do I need to know the op before constraining? I only use
+    // r_num_of_swar_calc in a context where r_op is SWAR_CAL
+    // if (r_op == SWAR_CALC){
+    r_num_of_swar_calc inside {[3:100]};
+    // }
+  }
+
+  constraint r_num_of_instr_c {
+    r_num_of_instr inside { [100:100] };
+  }
+
+  constraint r_reconfig_ratio_c {
+    solve r_num_of_swar_calc before r_reconfig_ratio;
+    // solve r_op before r_reconfig_ratio;
+    if (r_op == SWAR_CALC){
+      r_reconfig_ratio inside { [1:r_num_of_swar_calc-1] };
+    }
+  }
+
+  constraint r_reg_c {
+    r_reg inside {[0:num_of_avail_regs-1]};
+  }
+
+  // Register instruction stream with uvm factory
+  `uvm_object_utils(swar_instr_stream)
+
   function new(string name = "swar_instr_stream");
     super.new(name);
+    pre_randomize();
+    `uvm_info(`gfn, $sformatf("Creating swar instruction stream"), UVM_LOW)
 
     // This logic now correctly populates the queue when the object is created.
     if (supports_swcorrel) begin
@@ -402,6 +431,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       supported_opcodes.push_back(COR2b);
       supported_opcodes.push_back(COR3b);
       supported_opcodes.push_back(COR4b);
+      `uvm_info(`gfn, $sformatf("SWAR: Adding correlation operations"), UVM_LOW)
     end
     if (supports_swdemod) begin
       supported_opcodes.push_back(DEMR2b);
@@ -413,21 +443,28 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       supported_opcodes.push_back(DEMC2bG);
       supported_opcodes.push_back(DEMC3bG);
       supported_opcodes.push_back(DEMC4bG);
+      `uvm_info(`gfn, $sformatf("SWAR: Adding demodulation operations"), UVM_LOW)
     end
     if (supports_swsincos) begin
       supported_opcodes.push_back(SC1b);
       supported_opcodes.push_back(SC2b);
       supported_opcodes.push_back(SC3b);
       supported_opcodes.push_back(SC4b);
+      `uvm_info(`gfn, $sformatf("SWAR: Adding sincos operations"), UVM_LOW)
     end
     if (supports_swvideo || supports_swaudio || supports_swalu) begin
       supported_opcodes.push_back(SWADD);
       supported_opcodes.push_back(SWSUB);
       supported_opcodes.push_back(SWMUL);
       supported_opcodes.push_back(SWSHR);
+      `uvm_info(`gfn, $sformatf("SWAR: Adding ALU operations"), UVM_LOW)
     end
   endfunction
 
+  constraint r_illegal_swar_op_c {
+    // Start without illegal swar ops!
+    r_illegal_swar_op = 0;
+  }
 
   constraint opcode_c {
     solve r_illegal_swar_op before r_swar.select;
@@ -444,9 +481,24 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     (r_acc_sel % (swawidth / XLEN) == 0) && r_acc_sel inside {[0:swlanes*2]};
   }
 
+  constraint dist_op_c 	{  r_op dist {
+    ACCUMULATE_WRITE  := 3,
+    ACCUMULATE_READ   := 4,
+    ACCUMULATE_SELECT := 3,
+    SWAR_CALC         := 50,
+    OTHER             := 40
+    }; }
+
+  // Dont generate a bunch of illegal swar instructions
+  constraint dist_illegal_c 	{  r_illegal_swar_op dist {
+    0 := 95,
+    1 := 5
+    }; }
+
   // Don't allow the operation if we don't have an accumulator
   constraint acc_available_c {
-    !(r_op inside {ACCUMULATE_SELECT, ACCUMULATE_READ, ACCUMULATE_WRITE});
+    if (!supports_swacc)
+      !(r_op inside {ACCUMULATE_SELECT, ACCUMULATE_READ, ACCUMULATE_WRITE});
   }
 
   // Define the relationship between the opcode and the feature bits.
@@ -458,67 +510,121 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     { (r_swar.audio + r_swar.video + r_swar.alu) == 1; }
   }
 
+  function void reconfigure_ctrl();
+    riscv_instr tmp_instr;
+    riscv_pseudo_instr li_instr;
+    tmp_instr = new();
+    li_instr = new();
+    `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
+    `DV_CHECK_STD_RANDOMIZE_FATAL(r_reg);
+    li_instr.rd = avail_regs[r_reg];
+    li_instr.pseudo_instr_name = LI;
+    li_instr.imm_str = $sformatf("0x%0x # Reconfigure swar ctrl (r_reg = %d)", r_swar, r_reg);
+    instr_list.push_back(li_instr);
+    tmp_instr = riscv_instr::get_instr(CSRRW);
+    tmp_instr.comment = $sformatf("SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d clear %d",
+      r_swar.select.name, r_swar.sign, r_swar.red, r_swar.sat, r_swar.norm, r_swar.audio, r_swar.video, r_swar.alu, r_swar.ctrl_clear);
+    tmp_instr.rs1 = avail_regs[r_reg];
+    tmp_instr.rd  = ZERO;
+    tmp_instr.csr = CSR_SWAR_CTRLSTAT;
+    instr_list.push_back(tmp_instr);
+  endfunction
 
-  // function void post_randomize();
-  //   if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar) begin
-  //     init_instr = new[num_of_avail_regs];
-  //
-  //     //read/write fssr
-  //     tmp_instr = riscv_instr::get_instr(CSRRW);
-  //     tmp_instr.csr = 12'h7c0;
-  //     tmp_instr.rs1 = avail_regs[0];
-  //     tmp_instr.rd = avail_regs[0];
-  //     instr_list.push_back(tmp_instr);
-  //     instr_list.push_back($sformatf(".4byte 0x%4h", {get_func6(), get_c_gpr(rs1), imm[0], imm[1],
-  //                                 get_c_gpr(rd), get_c_opcode()}));
-  //
-  //     super.post_randomize();
-  //   end
-  //
-  // endfunction
 
   function void post_randomize();
-    riscv_instr tmp_instr;
-    for (int i = 0; i < r_num_of_instr; i++) begin
-      if (r_op == OTHER) begin
-        riscv_instr instr = riscv_instr::get_rand_instr(
-          .include_category({ARITHMETIC, RV32F, RV32D, LOAD, STORE, JUMP}));
-        randomize_gpr(instr);
-        instr_list.push_back(instr);
-      end else if (r_op == ACCUMULATE_WRITE) begin
-        tmp_instr = riscv_instr::get_instr(CSRRW);
-        tmp_instr.csr = CSR_SWAR_ACC_VAL;
-        // Any random value suffices
-        tmp_instr.rs1 = avail_regs[r_reg];
-        tmp_instr.rd = avail_regs[r_reg];
-        instr_list.push_back(tmp_instr);
-      end else if (r_op == ACCUMULATE_READ) begin
-        tmp_instr = riscv_instr::get_instr(CSRRW);
-        tmp_instr.csr = CSR_SWAR_ACC_VAL;
-        tmp_instr.rs1 = ZERO;
-        tmp_instr.rd = avail_regs[r_reg];
-        instr_list.push_back(tmp_instr);
-      end else if (r_op == ACCUMULATE_SELECT) begin
-        tmp_instr = riscv_instr::get_instr(CSRRW);
-        tmp_instr.csr = CSR_SWAR_ACC_SEL;
-        tmp_instr.rs1 = ZERO;
-        // We can get away with this if swlanes is < 16
-        if (swlanes >= 16)
-          `uvm_fatal("SWAR GEN", "Immediate not big enough for accumulator select");
-        tmp_instr.imm = r_acc_sel;
-        tmp_instr.rd = avail_regs[r_reg];
-        instr_list.push_back(tmp_instr);
-      end else if (r_op == SWAR_CALC) begin
-        riscv_swar_instr swar_instr[];
-        swar_instr = new[r_num_of_swar_calc];
-        foreach (swar_instr[i]) begin
-          swar_instr[i] = new();
-          randomize_gpr(swar_instr[i]);
-          instr_list.push_back(swar_instr[i]);
+    if (cfg.enable_swar_extension && (RV32SWAR inside { supported_isa })) begin
+      // `uvm_info(`gfn, $sformatf("SWAR: Running post randomize"), UVM_LOW)
+      riscv_instr tmp_instr;
+      riscv_pseudo_instr li_instr;
+      tmp_instr = new();
+      li_instr = new();
+
+      `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
+      li_instr.rd = avail_regs[0];
+      li_instr.pseudo_instr_name = LI;
+      li_instr.imm_str = $sformatf("0x%0x # Init swar ctrl (0 = %d)", r_swar, avail_regs[0]);
+      instr_list.push_back(li_instr);
+      tmp_instr = new();
+      tmp_instr = riscv_instr::get_instr(CSRRW);
+      tmp_instr.comment = $sformatf("SWAR CTRL: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d clear %d",
+      r_swar.select.name, r_swar.sign, r_swar.red, r_swar.sat, r_swar.norm, r_swar.audio, r_swar.video, r_swar.alu, r_swar.ctrl_clear);
+      tmp_instr.rs1 = avail_regs[0];
+      tmp_instr.rd  = ZERO;
+      tmp_instr.csr = CSR_SWAR_CTRLSTAT;
+      instr_list.push_back(tmp_instr);
+
+      for (int i = 0; i < r_num_of_instr; i++) begin
+        `DV_CHECK_STD_RANDOMIZE_FATAL(r_op);
+        case (r_op)
+        OTHER: begin
+          riscv_instr instr = riscv_instr::get_rand_instr(
+            .include_category({ARITHMETIC, RV32F, RV32D, LOAD, STORE, JUMP}),
+            .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB}));
+          randomize_gpr(instr);
+          instr_list.push_back(instr);
         end
+
+        ACCUMULATE_WRITE: begin
+          tmp_instr = new();
+          tmp_instr = riscv_instr::get_instr(CSRRW);
+          tmp_instr.csr = CSR_SWAR_ACC_VAL;
+          // Any random value suffices
+          tmp_instr.rs1 = avail_regs[0];
+          tmp_instr.rd = avail_regs[0];
+          tmp_instr.comment = "SWAR ACC WRITE";
+          instr_list.push_back(tmp_instr);
+        end
+        ACCUMULATE_READ: begin
+          tmp_instr = new();
+          tmp_instr = riscv_instr::get_instr(CSRRW);
+          tmp_instr.csr = CSR_SWAR_ACC_VAL;
+          tmp_instr.rs1 = ZERO;
+          tmp_instr.rd = avail_regs[0];
+          tmp_instr.comment = "SWAR ACC READ";
+          instr_list.push_back(tmp_instr);
+        end
+
+        ACCUMULATE_SELECT: begin
+          riscv_pseudo_instr li_instr;
+          li_instr = new();
+          li_instr.rd = avail_regs[0];
+          li_instr.pseudo_instr_name = LI;
+          li_instr.imm_str = $sformatf("0x%0x", r_acc_sel);
+          li_instr.comment = "Load ACC select";
+          instr_list.push_back(li_instr);
+
+          tmp_instr = new();
+          tmp_instr = riscv_instr::get_instr(CSRRW);
+          tmp_instr.comment = "SWAR ACC SELECT";
+          tmp_instr.csr = CSR_SWAR_ACC_SEL;
+          tmp_instr.rs1 = avail_regs[0];
+          tmp_instr.rd = avail_regs[0];
+          instr_list.push_back(tmp_instr);
+        end
+
+        SWAR_CALC: begin
+          riscv_swar_instr swar_instr[];
+          `DV_CHECK_STD_RANDOMIZE_FATAL(r_num_of_swar_calc);
+          `DV_CHECK_STD_RANDOMIZE_FATAL(r_reconfig_ratio);
+          `uvm_info(`gfn, $sformatf("Generating %d SWAR_CALC", r_num_of_swar_calc), UVM_LOW);
+          swar_instr = new[r_num_of_swar_calc];
+          foreach (swar_instr[i]) begin
+            if (i % r_reconfig_ratio == 0)
+              reconfigure_ctrl();
+            swar_instr[i] = new();
+            swar_instr[i].comment = $sformatf("SWAR ARITHMETIC i = %d reconfig_ratio = %d", i, r_reconfig_ratio);
+            `DV_CHECK_RANDOMIZE_FATAL(swar_instr[i]);
+            randomize_gpr(swar_instr[i]);
+            instr_list.push_back(swar_instr[i]);
+          end
+        end
+
+        default: `uvm_fatal("SWAR", "Randomized unknown op")
+
+        endcase
       end
+      super.post_randomize();
     end
-    super.post_randomize();
   endfunction
 endclass
 

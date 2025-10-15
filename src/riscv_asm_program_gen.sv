@@ -465,6 +465,10 @@ class riscv_asm_program_gen extends uvm_object;
         RV32ZFH, RV64ZFH : ;
         RV32ZFA, RV64ZFA : ;
         RV32NOELV, RV64NOELV : ;
+        RV32SWAR, RV64SWAR : ;
+        RV32H, RV64H : ;
+        RV32SMSTATEEN, RV64SMSTATEEN : ;
+        RV32SSTATEEN, RV64SSTATEEN : ;
         default : `uvm_fatal(`gfn, $sformatf("%0s is not yet supported",
                                    supported_isa[i].name()))
       endcase
