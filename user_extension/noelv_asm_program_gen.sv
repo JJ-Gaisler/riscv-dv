@@ -11,9 +11,11 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
                                            privileged_mode_t mode);
     gen_timer_section(interrupt_handler_instr, mode);
     gen_plic_section(interrupt_handler_instr, mode);
-    gen_swar_init_section(interrupt_handler_instr, mode);
   endfunction
-  ;
+
+  virtual function void gen_custom_program_header();
+    gen_swar_init_section();
+  endfunction
 
   // Only extend this function if the core utilizes a PLIC for handling interrupts
   // In this case, the core will write to a specific location as the response to the interrupt, and
@@ -109,33 +111,37 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
     interrupt_handler_instr.push_back($sformatf("1:"));
   endfunction
 
-  virtual function void gen_swar_init_section(ref string instr_queue[$], privileged_mode_t mode);
+  virtual function void gen_swar_init_section();
+    string str[$];
     if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar_extension) begin
-      instr_queue.push_back($sformatf("li x%0d, %d", cfg.gpr[0], XLEN - 1));
-      instr_queue.push_back($sformatf("csrs mstateen0, x%0d", cfg.gpr[0]));
 
       // If we have stateen we need to allow all modes to access swar
       if (RV32SMSTATEEN inside {supported_isa}) begin
         // set C and stateen for lower priv mode
-        instr_queue.push_back($sformatf("li x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
-        instr_queue.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[1]));
-        instr_queue.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
-        instr_queue.push_back($sformatf("csrw mstateen0, x%0d", cfg.gpr[0]));
+        str.push_back($sformatf("li x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
+        str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[1]));
+        str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+        str.push_back($sformatf("csrw mstateen0, x%0d", cfg.gpr[0]));
+        str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[0]));
         if (RV32SSTATEEN inside {supported_isa}) begin
           if (RV32H inside {supported_isa}) begin
-            instr_queue.push_back($sformatf("li   x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
-            instr_queue.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[1]));
-            instr_queue.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
-            instr_queue.push_back($sformatf("csrw hstateen0, x%0d", cfg.gpr[0]));
+            str.push_back($sformatf("li   x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
+            str.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[1]));
+            str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+            str.push_back($sformatf("csrw hstateen0, x%0d", cfg.gpr[0]));
+            str.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[0]));
           end
           if (SUPERVISOR_MODE inside {supported_privileged_mode}) begin
-            instr_queue.push_back($sformatf("li x%0d, 1", cfg.gpr[0]));
-            instr_queue.push_back($sformatf("csrr x%0d, sstateen0", cfg.gpr[1]));
-            instr_queue.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
-            instr_queue.push_back($sformatf("csrw sstateen0, x%0d", cfg.gpr[0]));
+            str.push_back($sformatf("li x%0d, 1", cfg.gpr[0]));
+            str.push_back($sformatf("csrr x%0d, sstateen0", cfg.gpr[1]));
+            str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+            str.push_back($sformatf("csrw sstateen0, x%0d", cfg.gpr[0]));
+            str.push_back($sformatf("csrr x%0d, sstateen0", cfg.gpr[0]));
+            str.push_back($sformatf("\n"));
           end
         end
       end
+      gen_section("custom_init", str);
     end
   endfunction
 
@@ -166,7 +172,7 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
     end
     if (RV32NOELV inside {supported_isa}) begin
       `uvm_info(`gfn, $sformatf("Randomizing CSR features: %x", r_feature), UVM_LOW)
-      instr.push_back({indent, $sformatf("li x%0d, 0x%0x", cfg.gpr[0], r_feature)});
+      instr.push_back({indent, $sformatf("li x%0d, 0x%0x | %d << 63", cfg.gpr[0], r_feature, cfg.enable_swar_extension)});
       instr.push_back({indent, $sformatf("csrw 0x%0x, x%0d #nvc_features", 12'h7c0, cfg.gpr[0])});
     end
   endfunction
@@ -219,7 +225,7 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
       li_instr = new();
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
-      li_instr.imm_str = $sformatf("0x%8h | 1 << %d", r_feature, XLEN-1); // For the sake of SWAR
+      li_instr.imm_str = $sformatf("0x%8h | %d << 63", r_feature, cfg.enable_swar_extension); // For the sake of SWAR
       instr_list.push_back(li_instr);
 
       //read/write fssr
@@ -342,7 +348,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
   bit supports_swsincos = 1;
   bit supports_swaudio  = 1;
   bit supports_swvideo  = 1;
-  bit supports_swalu    = 0;
+  bit supports_swalu    = 1;
   bit supports_swksplit = 0;
   bit supports_swacc    = 1;
   bit supports_swaccseq = 0;
@@ -391,6 +397,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
   function new(string name = "swar_instr_stream");
     super.new(name);
     pre_randomize();
+    randomize_avail_regs();
     `uvm_info(`gfn, $sformatf("Creating swar instruction stream"), UVM_LOW)
 
     // This logic now correctly populates the queue when the object is created.
@@ -535,7 +542,8 @@ class swar_instr_stream extends riscv_directed_instr_stream;
         `uvm_info(`gfn, $sformatf("Randomizing swar/calc op: new %d", r_op_swar_other_q[i]), UVM_LOW);
           if (r_op_swar_other_q[i] == 0) begin
             riscv_instr instr = riscv_instr::get_rand_instr(
-              .include_category({ARITHMETIC, RV32F, RV32D, LOAD, STORE, JUMP}),
+              .include_category({ARITHMETIC, RV32F, RV32D}),
+              // .include_category({ARITHMETIC, RV32F, RV32D, JUMP}),
               .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB}));
             randomize_gpr(instr);
             instr_list.push_back(instr);

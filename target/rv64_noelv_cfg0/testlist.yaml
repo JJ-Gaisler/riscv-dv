@@ -57,6 +57,7 @@
     +directed_instr_10=riscv_lr_sc_instr_stream,20
     +directed_instr_11=f_flags_instr_stream,20
     +directed_instr_12=csr_features_instr_stream,10
+    +directed_instr_13=swar_instr_stream,10
     +illegal_instr_ratio=4
     +pmp_randomize=0
     +pmp_num_regions=1

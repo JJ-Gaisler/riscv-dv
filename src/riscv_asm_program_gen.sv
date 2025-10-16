@@ -320,6 +320,8 @@ class riscv_asm_program_gen extends uvm_object;
   //---------------------------------------------------------------------------------------
   // Major sections - init, stack, data, test_done etc.
   //---------------------------------------------------------------------------------------
+  virtual function void gen_custom_program_header();
+  endfunction;
 
   virtual function void gen_program_header();
     string str[$];
@@ -340,6 +342,7 @@ class riscv_asm_program_gen extends uvm_object;
       str = {str, $sformatf("li x6, %0d", hart),
                   $sformatf("beq x5, x6, %0df", hart)};
     end
+    gen_custom_program_header();
     gen_section("_start", str);
     for (int hart = 0; hart < cfg.num_of_harts; hart++) begin
       instr_stream.push_back($sformatf("%0d: la x%0d, %0sstart", hart, cfg.scratch_reg, hart_prefix(hart)));
