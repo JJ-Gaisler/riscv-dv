@@ -52,6 +52,7 @@
       irun -R <sim_opts> -svseed <seed> -svrnc rand_struct
 
 - tool: questa
+  env_var: CPPPATH
   compile:
     cmd:
       - "vmap mtiUvm $QUESTA_HOME/uvm-1.2"
@@ -70,7 +71,7 @@
         -o design_opt"
   sim:
     cmd: >
-      vsim -64 -c <cov_opts> -do <cwd>/questa_sim.tcl design_opt <sim_opts>  -sv_seed <seed>
+      vsim -64 -c <cov_opts> -do <cwd>/questa_sim.tcl design_opt <sim_opts>  -sv_seed <seed> <CPPPATH>
     cov_opts: >
       -do "coverage save -onexit <out>/cov.ucdb;"
 
