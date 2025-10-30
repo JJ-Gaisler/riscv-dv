@@ -118,23 +118,23 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
       // If we have stateen we need to allow all modes to access swar
       if (RV32SMSTATEEN inside {supported_isa}) begin
         // set C and stateen for lower priv mode
-        str.push_back($sformatf("li x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
+        str.push_back($sformatf("li x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN - 1));
         str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[1]));
-        str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+        str.push_back($sformatf("or   x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
         str.push_back($sformatf("csrw mstateen0, x%0d", cfg.gpr[0]));
         str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[0]));
         if (RV32SSTATEEN inside {supported_isa}) begin
           if (RV32H inside {supported_isa}) begin
-            str.push_back($sformatf("li   x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN-1));
+            str.push_back($sformatf("li   x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN - 1));
             str.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[1]));
-            str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+            str.push_back($sformatf("or   x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
             str.push_back($sformatf("csrw hstateen0, x%0d", cfg.gpr[0]));
             str.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[0]));
           end
           if (SUPERVISOR_MODE inside {supported_privileged_mode}) begin
             str.push_back($sformatf("li x%0d, 1", cfg.gpr[0]));
             str.push_back($sformatf("csrr x%0d, sstateen0", cfg.gpr[1]));
-            str.push_back($sformatf("or   x%0d, x%0d, x%0d",    cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
+            str.push_back($sformatf("or   x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
             str.push_back($sformatf("csrw sstateen0, x%0d", cfg.gpr[0]));
             str.push_back($sformatf("csrr x%0d, sstateen0", cfg.gpr[0]));
             str.push_back($sformatf("\n"));
@@ -172,7 +172,15 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
     end
     if (RV32NOELV inside {supported_isa}) begin
       `uvm_info(`gfn, $sformatf("Randomizing CSR features: %x", r_feature), UVM_LOW)
-      instr.push_back({indent, $sformatf("li x%0d, 0x%0x | %d << 63", cfg.gpr[0], r_feature, cfg.enable_swar_extension)});
+      instr.push_back({
+                      indent,
+                      $sformatf(
+                          "li x%0d, 0x%0x | %d << 63",
+                          cfg.gpr[0],
+                          r_feature,
+                          cfg.enable_swar_extension
+                      )
+                      });
       instr.push_back({indent, $sformatf("csrw 0x%0x, x%0d #nvc_features", 12'h7c0, cfg.gpr[0])});
     end
   endfunction
@@ -225,7 +233,8 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
       li_instr = new();
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
-      li_instr.imm_str = $sformatf("0x%8h | %d << 63", r_feature, cfg.enable_swar_extension); // For the sake of SWAR
+      li_instr.imm_str = $sformatf("0x%8h | %d << 63", r_feature,
+                                   cfg.enable_swar_extension);  // For the sake of SWAR
       instr_list.push_back(li_instr);
 
       //read/write fssr
@@ -255,7 +264,7 @@ class riscv_swar_instr extends riscv_instr;
     has_rs2 = 1'b1;
     has_rs1 = 1'b1;
     has_imm = 1'b0;
-    format = R_FORMAT;
+    format  = R_FORMAT;
   endfunction
 
   function void pre_randomize();
@@ -263,24 +272,24 @@ class riscv_swar_instr extends riscv_instr;
   endfunction
 
   virtual function bit is_supported(riscv_instr_gen_config cfg);
-    return (cfg.enable_swar_extension && (RV32SWAR inside { supported_isa }));
+    return (cfg.enable_swar_extension && (RV32SWAR inside {supported_isa}));
   endfunction : is_supported
 
   virtual function bit [6:0] get_func7();
     case (instr_name) inside
-      SWAR : get_func7 = 7'b0000000;
-      default : get_func7 = super.get_func7();
+      SWAR: get_func7 = 7'b0000000;
+      default: get_func7 = super.get_func7();
     endcase
   endfunction
 
   virtual function bit [2:0] get_func3();
     case (instr_name) inside
-      SWAR : get_func3 = 3'b000;
-      default : get_func3 = super.get_func3();
+      SWAR: get_func3 = 3'b000;
+      default: get_func3 = super.get_func3();
     endcase
   endfunction
 
-  function bit[6:0] get_opcode();
+  function bit [6:0] get_opcode();
     case (instr_name) inside
       SWAR   : get_opcode = 7'b0101011;
       default : get_opcode = super.get_opcode();
@@ -288,7 +297,7 @@ class riscv_swar_instr extends riscv_instr;
   endfunction : get_opcode
 
   virtual function string convert2bin(string prefix = "");
-    return  {prefix, $sformatf("0x%8h", {get_func7(), rs2, rs1, get_func3(), rd, get_opcode()})};
+    return {prefix, $sformatf("0x%8h", {get_func7(), rs2, rs1, get_func3(), rd, get_opcode()})};
   endfunction : convert2bin
 
   virtual function string convert2asm(string prefix = "");
@@ -326,21 +335,21 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     SWSHR   = 8'b10000000
   } swar_opcode_t;
 
-  typedef struct packed {
-    swar_opcode_t select;
-    bit sign;
-    bit red;
-    bit sat;
-    bit norm;
-    bit audio;
-    bit video;
-    bit alu;
-    bit [5:0] dyn_rng;
-    bit restr;
-    bit refblk;
-    bit ctrl_clear;
+  typedef struct {
+    rand swar_opcode_t select;  // 0:7
+    rand bit sign;  // 8
+    rand bit red;  // 9
+    rand bit sat;  // 10
+    rand bit norm;  // 11
+    rand bit audio;  // 12
+    rand bit video;  // 13
+    rand bit alu;  // 14
+    bit res0 = 0;  // 15
+    rand bit [5:0] dyn_rng;  // 16:22
+    rand bit restr;  // 23
+    rand bit refblk;  // 24
+    rand bit ctrl_clear;  // 25
   } swar_csr_t;
-
 
   // --- Feature flags for cfg 0 ---
   bit supports_swcorrel = 1;
@@ -369,12 +378,12 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     CALC
   } swar_op_t;
 
-  rand int unsigned   r_num_of_ops;
-  rand swar_op_t      r_ops_q[$];
-  rand bit            r_op_swar_other_q[$];
-  rand bit[4:0]       r_acc_sel;
-  rand swar_csr_t     r_swar;
-  rand int unsigned   r_reconfig_ratio;
+  rand int unsigned       r_num_of_ops;
+  rand swar_op_t          r_ops_q          [$];
+  rand bit                r_op_swar_other_q[$];
+  rand bit          [4:0] r_acc_sel;
+  rand swar_csr_t         r_swar;
+  rand int unsigned       r_reconfig_ratio;
 
   function void pre_randomize();
     super.pre_randomize();
@@ -383,13 +392,9 @@ class swar_instr_stream extends riscv_directed_instr_stream;
   endfunction : pre_randomize
 
 
-  constraint r_num_of_ops_c {
-    r_num_of_ops inside { [100:1000] };
-  }
+  constraint r_num_of_ops_c {r_num_of_ops inside {[100 : 1000]};}
 
-  constraint r_reconfig_ratio_c {
-    r_reconfig_ratio inside { [0:100] };
-  }
+  constraint r_reconfig_ratio_c {r_reconfig_ratio inside {[0 : 100]};}
 
   // Register instruction stream with uvm factory
   `uvm_object_utils(swar_instr_stream)
@@ -436,26 +441,18 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     end
   endfunction
 
-  constraint opcode_c {
-    r_swar.select inside {supported_opcodes};
-  }
+  constraint opcode_c {r_swar.select inside {supported_opcodes};}
 
-  // Selector should be a valid value and we only need to use select values
-  // that can have any values (mod operation).
-  constraint acc_sel_c {
-    (int'(r_acc_sel) % 2 == 0) && r_acc_sel inside {[0:swlanes*2]};
-  }
-  //
   constraint ops_q_c {
     r_ops_q.size() == r_num_of_ops;
 
-    if (supports_swacc){
+    if (supports_swacc) {
       foreach (r_ops_q[i]) {
         r_ops_q[i] dist {
-        ACCUMULATE_WRITE  := 3,
-        ACCUMULATE_READ   := 6,
-        ACCUMULATE_SELECT := 3,
-        CALC              := 90
+          ACCUMULATE_WRITE  := 3,
+          ACCUMULATE_READ   := 6,
+          ACCUMULATE_SELECT := 3,
+          CALC              := 90
         };
       }
     } else {
@@ -469,8 +466,8 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     r_op_swar_other_q.size() == r_num_of_ops;
     foreach (r_op_swar_other_q[i]) {
       r_op_swar_other_q[i] dist {
-      0 := 64, // Slightly prefer other ops
-      1 := 40
+        0 := 64,  // Slightly prefer other ops
+        1 := 40
       };
     }
   }
@@ -481,25 +478,65 @@ class swar_instr_stream extends riscv_directed_instr_stream;
 
     (r_swar.select inside {SWADD, SWSUB, SWMUL}) ->
     // one of the audio/video/alu flags must be set.
-    { (r_swar.audio + r_swar.video + r_swar.alu) == 1; }
+    {
+      (r_swar.audio + r_swar.video + r_swar.alu) == 1;
+    }
   }
+
+  function bit [31:0] pack_swar_csr_t(swar_csr_t in);
+    bit [31:0] ret = '0;
+    ret[7:0]   = in.select;
+    ret[8]     = in.sign;
+    ret[9]     = in.red;
+    ret[10]    = in.sat;
+    ret[11]    = in.norm;
+    ret[12]    = in.audio;
+    ret[13]    = in.video;
+    ret[14]    = in.alu;
+    ret[15]    = in.res0;
+    ret[21:16] = in.dyn_rng;
+    ret[22]    = in.restr;
+    ret[23]    = in.refblk;
+    ret[24]    = in.ctrl_clear;
+    return ret;
+  endfunction
 
   function void reconfigure_ctrl();
     riscv_instr tmp_instr;
     riscv_pseudo_instr li_instr;
     tmp_instr = new();
-    li_instr = new();
+    li_instr  = new();
 
     `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
+    if (r_swar.res0 == 1) begin
+      `uvm_fatal("SWAR:", "res0 can't be 1");
+    end
 
     randomize_gpr(li_instr);
     li_instr.pseudo_instr_name = LI;
-    li_instr.imm_str = $sformatf("0x%8h # Reconfigure swar ctrl", r_swar);
+    li_instr.imm_str = $sformatf("0x%8h # Reconfigure swar ctrl", pack_swar_csr_t(r_swar));
     instr_list.push_back(li_instr);
 
     tmp_instr = riscv_instr::get_instr(CSRRW);
-    tmp_instr.comment = $sformatf("SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d clear %d",
-      r_swar.select.name, r_swar.sign, r_swar.red, r_swar.sat, r_swar.norm, r_swar.audio, r_swar.video, r_swar.alu, r_swar.ctrl_clear);
+    tmp_instr.comment = $sformatf(
+        "SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d res0 %d dyn_rng %d restr %d refblk %d clear %d",
+        r_swar.select.name,
+        r_swar.sign,
+        r_swar.red,
+        r_swar.sat,
+        r_swar.norm,
+        r_swar.audio,
+        r_swar.video,
+        r_swar.alu,
+        r_swar.res0,
+        r_swar.dyn_rng,
+        r_swar.restr,
+        r_swar.refblk,
+        r_swar.ctrl_clear
+    );
+    if (r_swar.res0 == 1) begin
+      `uvm_fatal("SWAR:", "res0 can't be 1");
+    end
     tmp_instr.rs1 = li_instr.rd;
     tmp_instr.rd  = ZERO;
     tmp_instr.csr = CSR_SWAR_CTRLSTAT;
@@ -508,100 +545,120 @@ class swar_instr_stream extends riscv_directed_instr_stream;
 
 
   function void post_randomize();
-    if (cfg.enable_swar_extension && (RV32SWAR inside { supported_isa })) begin
+    if (cfg.enable_swar_extension && (RV32SWAR inside {supported_isa})) begin
       riscv_instr tmp_instr;
       riscv_pseudo_instr li_instr;
       int swar_insts = 0;
 
       tmp_instr = new();
-      li_instr = new();
+      li_instr  = new();
 
       `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
 
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
-      li_instr.imm_str = $sformatf("0x%8h # Init swar ctrl", unsigned'(r_swar));
+      li_instr.imm_str = $sformatf("0x%8h # Init swar ctrl", pack_swar_csr_t(r_swar));
       instr_list.push_back(li_instr);
 
       tmp_instr = new();
       tmp_instr = riscv_instr::get_instr(CSRRW);
-      tmp_instr.comment = $sformatf("SWAR CTRL: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d clear %d",
-      r_swar.select.name, r_swar.sign, r_swar.red, r_swar.sat, r_swar.norm, r_swar.audio, r_swar.video, r_swar.alu, r_swar.ctrl_clear);
+      tmp_instr.comment = $sformatf(
+          "SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d res0 %d dyn_rng %d restr %d refblk %d clear %d",
+          r_swar.select.name,
+          r_swar.sign,
+          r_swar.red,
+          r_swar.sat,
+          r_swar.norm,
+          r_swar.audio,
+          r_swar.video,
+          r_swar.alu,
+          r_swar.res0,
+          r_swar.dyn_rng,
+          r_swar.restr,
+          r_swar.refblk,
+          r_swar.ctrl_clear
+      );
       tmp_instr.rs1 = li_instr.rd;
-      tmp_instr.rd  = ZERO;
+      tmp_instr.rd = ZERO;
       tmp_instr.csr = CSR_SWAR_CTRLSTAT;
       instr_list.push_back(tmp_instr);
 
-      `uvm_info(`gfn, $sformatf("SWAR INSTR STREAM: Generating %d instructions, reconfig_ratio %d", r_num_of_ops, r_reconfig_ratio), UVM_LOW);
+      `uvm_info(`gfn, $sformatf(
+                "SWAR INSTR STREAM: Generating %d instructions, reconfig_ratio %d",
+                r_num_of_ops,
+                r_reconfig_ratio
+                ), UVM_LOW);
 
 
       for (int i = 0; i < r_num_of_ops; i++) begin
         `uvm_info(`gfn, $sformatf("Randomizing op: new %s", r_ops_q[i].name), UVM_LOW);
         case (r_ops_q[i])
-        CALC: begin
-        `uvm_info(`gfn, $sformatf("Randomizing swar/calc op: new %d", r_op_swar_other_q[i]), UVM_LOW);
-          if (r_op_swar_other_q[i] == 0) begin
-            riscv_instr instr = riscv_instr::get_rand_instr(
-              .include_category({ARITHMETIC, RV32F, RV32D}),
-              // .include_category({ARITHMETIC, RV32F, RV32D, JUMP}),
-              .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB}));
-            randomize_gpr(instr);
-            instr_list.push_back(instr);
-          end else begin
-            riscv_swar_instr swar_instr;
-            `uvm_info(`gfn, $sformatf("Generating SWAR CALC num %d", swar_insts), UVM_LOW);
-            swar_instr = new();
-            if (swar_insts % r_reconfig_ratio == 0)
-              reconfigure_ctrl();
-            `DV_CHECK_RANDOMIZE_FATAL(swar_instr);
-            randomize_gpr(swar_instr);
-            instr_list.push_back(swar_instr);
-            swar_insts++;
+          CALC: begin
+            `uvm_info(`gfn, $sformatf("Randomizing swar/calc op: new %d", r_op_swar_other_q[i]),
+                      UVM_LOW);
+            if (r_op_swar_other_q[i] == 0) begin
+              riscv_instr instr = riscv_instr::get_rand_instr(
+                  .include_category({ARITHMETIC, RV32F, RV32D}),
+                  // .include_category({ARITHMETIC, RV32F, RV32D, JUMP}),
+                  .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB})
+              );
+              randomize_gpr(instr);
+              instr_list.push_back(instr);
+            end else begin
+              riscv_swar_instr swar_instr;
+              `uvm_info(`gfn, $sformatf("Generating SWAR CALC num %d", swar_insts), UVM_LOW);
+              swar_instr = new();
+              if (swar_insts % r_reconfig_ratio == 0) reconfigure_ctrl();
+              `DV_CHECK_RANDOMIZE_FATAL(swar_instr);
+              randomize_gpr(swar_instr);
+              instr_list.push_back(swar_instr);
+              swar_insts++;
+            end
           end
-        end
 
-        ACCUMULATE_WRITE: begin
-          riscv_instr tmp_instr;
-          tmp_instr = new();
-          tmp_instr = riscv_instr::get_instr(CSRRW);
-          randomize_gpr(tmp_instr);
-          tmp_instr.csr = CSR_SWAR_ACC_VAL;
-          tmp_instr.comment = "SWAR ACC WRITE";
-          instr_list.push_back(tmp_instr);
-        end
-        ACCUMULATE_READ: begin
-          riscv_instr tmp_instr;
-          tmp_instr = new();
-          tmp_instr = riscv_instr::get_instr(CSRRW);
-          randomize_gpr(tmp_instr);
-          tmp_instr.csr = CSR_SWAR_ACC_VAL;
-          tmp_instr.rs1 = ZERO;
-          tmp_instr.comment = "SWAR ACC READ";
-          instr_list.push_back(tmp_instr);
-        end
+          ACCUMULATE_WRITE: begin
+            riscv_instr tmp_instr;
+            tmp_instr = new();
+            tmp_instr = riscv_instr::get_instr(CSRRW);
+            randomize_gpr(tmp_instr);
+            tmp_instr.csr = CSR_SWAR_ACC_VAL;
+            tmp_instr.comment = "SWAR ACC WRITE";
+            instr_list.push_back(tmp_instr);
+          end
+          ACCUMULATE_READ: begin
+            riscv_instr tmp_instr;
+            tmp_instr = new();
+            tmp_instr = riscv_instr::get_instr(CSRRW);
+            randomize_gpr(tmp_instr);
+            tmp_instr.csr = CSR_SWAR_ACC_VAL;
+            tmp_instr.rs1 = ZERO;
+            tmp_instr.comment = "SWAR ACC READ";
+            instr_list.push_back(tmp_instr);
+          end
 
-        ACCUMULATE_SELECT: begin
-          riscv_pseudo_instr li_instr;
-          riscv_instr tmp_instr;
-          `DV_CHECK_STD_RANDOMIZE_FATAL(r_acc_sel);
+          ACCUMULATE_SELECT: begin
+            riscv_pseudo_instr li_instr;
+            riscv_instr tmp_instr;
+            `DV_CHECK_STD_RANDOMIZE_FATAL(r_acc_sel);
+            r_acc_sel[0] = 0;
 
-          li_instr = new();
-          randomize_gpr(li_instr);
-          li_instr.pseudo_instr_name = LI;
-          li_instr.imm_str = $sformatf("0x%8h", r_acc_sel);
-          li_instr.imm = r_acc_sel;
-          li_instr.comment = "Load ACC select";
-          instr_list.push_back(li_instr);
+            li_instr = new();
+            randomize_gpr(li_instr);
+            li_instr.pseudo_instr_name = LI;
+            li_instr.imm_str = $sformatf("0x%8h", r_acc_sel);
+            li_instr.imm = r_acc_sel;
+            li_instr.comment = "Load ACC select";
+            instr_list.push_back(li_instr);
 
-          tmp_instr = new();
-          tmp_instr = riscv_instr::get_instr(CSRRW);
-          tmp_instr.comment = "SWAR ACC SELECT";
-          tmp_instr.csr = CSR_SWAR_ACC_SEL;
-          tmp_instr.rs1 = li_instr.rd;
-          instr_list.push_back(tmp_instr);
-        end
+            tmp_instr = new();
+            tmp_instr = riscv_instr::get_instr(CSRRW);
+            tmp_instr.comment = "SWAR ACC SELECT";
+            tmp_instr.csr = CSR_SWAR_ACC_SEL;
+            tmp_instr.rs1 = li_instr.rd;
+            instr_list.push_back(tmp_instr);
+          end
 
-        default: `uvm_fatal("SWAR", "Randomized unknown op")
+          default: `uvm_fatal("SWAR", "Randomized unknown op")
 
         endcase
       end
@@ -609,5 +666,3 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     end
   endfunction
 endclass
-
-
