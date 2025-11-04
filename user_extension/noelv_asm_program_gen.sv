@@ -382,7 +382,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
   rand swar_op_t          r_ops_q          [$];
   rand bit                r_op_swar_other_q[$];
   rand bit          [4:0] r_acc_sel;
-  rand swar_csr_t         r_swar;
+  rand swar_csr_t         r_swar_q         [$];
   rand int unsigned       r_reconfig_ratio;
 
   function void pre_randomize();
@@ -441,7 +441,12 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     end
   endfunction
 
-  constraint opcode_c {r_swar.select inside {supported_opcodes};}
+  constraint opcode_c {
+    // r_num_of_ops is technically more than we need, easier however to do it
+    // this way...
+    r_swar_q.size() == r_num_of_ops;
+    foreach (r_swar_q[i]) {r_swar_q[i].select inside {supported_opcodes};}
+  }
 
   constraint ops_q_c {
     r_ops_q.size() == r_num_of_ops;
@@ -474,12 +479,15 @@ class swar_instr_stream extends riscv_directed_instr_stream;
 
   // Define the relationship between the opcode and the feature bits.
   constraint features_c {
-    solve r_swar.select before r_swar.audio, r_swar.video, r_swar.alu;
+    r_swar_q.size() == r_num_of_ops;
+    foreach (r_swar_q[i]) {
+      solve r_swar_q[i].select before r_swar_q[i].audio, r_swar_q[i].video, r_swar_q[i].alu;
 
-    (r_swar.select inside {SWADD, SWSUB, SWMUL}) ->
-    // one of the audio/video/alu flags must be set.
-    {
-      (r_swar.audio + r_swar.video + r_swar.alu) == 1;
+      (r_swar_q[i].select inside {SWADD, SWSUB, SWMUL, SWSHR}) ->
+      // one of the audio/video/alu flags must be set.
+      {
+        (r_swar_q[i].audio + r_swar_q[i].video + r_swar_q[i].alu) == 1;
+      }
     }
   }
 
@@ -501,40 +509,35 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     return ret;
   endfunction
 
-  function void reconfigure_ctrl();
+  function void reconfigure_ctrl(int idx);
     riscv_instr tmp_instr;
     riscv_pseudo_instr li_instr;
     tmp_instr = new();
     li_instr  = new();
 
-    `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
-    if (r_swar.res0 == 1) begin
-      `uvm_fatal("SWAR:", "res0 can't be 1");
-    end
-
     randomize_gpr(li_instr);
     li_instr.pseudo_instr_name = LI;
-    li_instr.imm_str = $sformatf("0x%8h # Reconfigure swar ctrl", pack_swar_csr_t(r_swar));
+    li_instr.imm_str = $sformatf("0x%8h # Reconfigure swar ctrl", pack_swar_csr_t(r_swar_q[idx]));
     instr_list.push_back(li_instr);
 
     tmp_instr = riscv_instr::get_instr(CSRRW);
     tmp_instr.comment = $sformatf(
         "SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d res0 %d dyn_rng %d restr %d refblk %d clear %d",
-        r_swar.select.name,
-        r_swar.sign,
-        r_swar.red,
-        r_swar.sat,
-        r_swar.norm,
-        r_swar.audio,
-        r_swar.video,
-        r_swar.alu,
-        r_swar.res0,
-        r_swar.dyn_rng,
-        r_swar.restr,
-        r_swar.refblk,
-        r_swar.ctrl_clear
+        r_swar_q[idx].select.name,
+        r_swar_q[idx].sign,
+        r_swar_q[idx].red,
+        r_swar_q[idx].sat,
+        r_swar_q[idx].norm,
+        r_swar_q[idx].audio,
+        r_swar_q[idx].video,
+        r_swar_q[idx].alu,
+        r_swar_q[idx].res0,
+        r_swar_q[idx].dyn_rng,
+        r_swar_q[idx].restr,
+        r_swar_q[idx].refblk,
+        r_swar_q[idx].ctrl_clear
     );
-    if (r_swar.res0 == 1) begin
+    if (r_swar_q[idx].res0 == 1) begin
       `uvm_fatal("SWAR:", "res0 can't be 1");
     end
     tmp_instr.rs1 = li_instr.rd;
@@ -553,33 +556,34 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       tmp_instr = new();
       li_instr  = new();
 
-      `DV_CHECK_STD_RANDOMIZE_FATAL(r_swar);
-
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
-      li_instr.imm_str = $sformatf("0x%8h # Init swar ctrl", pack_swar_csr_t(r_swar));
+      li_instr.imm_str = $sformatf("0x%8h # Init swar ctrl", pack_swar_csr_t(r_swar_q[0]));
       instr_list.push_back(li_instr);
 
       tmp_instr = new();
       tmp_instr = riscv_instr::get_instr(CSRRW);
       tmp_instr.comment = $sformatf(
           "SWAR CTRL RECONF: op: %s  sign %d red %d sat %d norm %d audio %d video %d alu %d res0 %d dyn_rng %d restr %d refblk %d clear %d",
-          r_swar.select.name,
-          r_swar.sign,
-          r_swar.red,
-          r_swar.sat,
-          r_swar.norm,
-          r_swar.audio,
-          r_swar.video,
-          r_swar.alu,
-          r_swar.res0,
-          r_swar.dyn_rng,
-          r_swar.restr,
-          r_swar.refblk,
-          r_swar.ctrl_clear
+          r_swar_q[0].select.name,
+          r_swar_q[0].sign,
+          r_swar_q[0].red,
+          r_swar_q[0].sat,
+          r_swar_q[0].norm,
+          r_swar_q[0].audio,
+          r_swar_q[0].video,
+          r_swar_q[0].alu,
+          r_swar_q[0].res0,
+          r_swar_q[0].dyn_rng,
+          r_swar_q[0].restr,
+          r_swar_q[0].refblk,
+          r_swar_q[0].ctrl_clear
       );
+      if (!(r_swar_q[0].select inside {supported_opcodes})) begin
+        `uvm_fatal("SWAR", $sformatf("Constraint not fulfilled %02d", r_swar_q[0].select.name));
+      end
       tmp_instr.rs1 = li_instr.rd;
-      tmp_instr.rd = ZERO;
+      tmp_instr.rd  = ZERO;
       tmp_instr.csr = CSR_SWAR_CTRLSTAT;
       instr_list.push_back(tmp_instr);
 
@@ -608,7 +612,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
               riscv_swar_instr swar_instr;
               `uvm_info(`gfn, $sformatf("Generating SWAR CALC num %d", swar_insts), UVM_LOW);
               swar_instr = new();
-              if (swar_insts % r_reconfig_ratio == 0) reconfigure_ctrl();
+              if (swar_insts % r_reconfig_ratio == 0) reconfigure_ctrl(r_num_of_ops[i+1]);
               `DV_CHECK_RANDOMIZE_FATAL(swar_instr);
               randomize_gpr(swar_instr);
               instr_list.push_back(swar_instr);
@@ -639,7 +643,6 @@ class swar_instr_stream extends riscv_directed_instr_stream;
           ACCUMULATE_SELECT: begin
             riscv_pseudo_instr li_instr;
             riscv_instr tmp_instr;
-            `DV_CHECK_STD_RANDOMIZE_FATAL(r_acc_sel);
             r_acc_sel[0] = 0;
 
             li_instr = new();
