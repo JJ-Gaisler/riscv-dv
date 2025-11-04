@@ -477,6 +477,14 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     }
   }
 
+  constraint alu_ctrl_c {
+    r_swar_q.size() == r_num_of_ops;
+    foreach (r_swar_q[i]) {
+      solve r_swar_q[i].select before r_swar_q[i].alu;
+      if (!supports_swalu) {r_swar_q[i].alu == 0;}
+    }
+  }
+
   // Define the relationship between the opcode and the feature bits.
   constraint features_c {
     r_swar_q.size() == r_num_of_ops;
@@ -540,6 +548,21 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     if (r_swar_q[idx].res0 == 1) begin
       `uvm_fatal("SWAR:", "res0 can't be 1");
     end
+
+    if (r_swar_q[idx].alu == 1 && !supports_swalu) begin
+      `uvm_fatal("SWAR:", "Constraint for swalu not fulfilled");
+    end
+
+    if (r_swar_q[idx].select inside {SWSHR, SWADD, SWSUB, SWMUL} &&
+      (r_swar_q[idx].alu + r_swar_q[idx].video + r_swar_q[idx].audio != 1)) begin
+      `uvm_fatal("SWAR", $sformatf(
+                 "Constraint not fulfilled alu %01d video %01d audio %01d",
+                 r_swar_q[idx].alu,
+                 r_swar_q[idx].video,
+                 r_swar_q[idx].audio
+                 ));
+    end
+
     tmp_instr.rs1 = li_instr.rd;
     tmp_instr.rd  = ZERO;
     tmp_instr.csr = CSR_SWAR_CTRLSTAT;
