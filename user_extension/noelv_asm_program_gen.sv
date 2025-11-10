@@ -124,7 +124,7 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
         str.push_back($sformatf("csrw mstateen0, x%0d", cfg.gpr[0]));
         str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[0]));
         if (RV32SSTATEEN inside {supported_isa}) begin
-          if (RV32H inside {supported_isa}) begin
+          if (RV32H inside {supported_isa} && cfg.enable_h_extension) begin
             str.push_back($sformatf("li   x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN - 1));
             str.push_back($sformatf("csrr x%0d, hstateen0", cfg.gpr[1]));
             str.push_back($sformatf("or   x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
