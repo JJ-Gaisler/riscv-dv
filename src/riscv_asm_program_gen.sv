@@ -326,35 +326,6 @@ class riscv_asm_program_gen extends uvm_object;
 
   virtual function void gen_program_header();
     string str[$];
-    if (cfg.enable_swar_extension) begin
-      instr_stream.push_back(".macro swari rd, rs2, rs1");
-      instr_stream.push_back(".insn r 0x2b, 0x0, 0x0, \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swaradd8 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (2 << 3) + 0), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarsub8 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (2 << 3) + 1), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarmul8 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (2 << 3) + 2), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarshr8 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (2 << 3) + 3), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swaradd16 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (1 << 3) + 0), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarsub16 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (1 << 3) + 1), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarmul16 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (1 << 3) + 2), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-      instr_stream.push_back(".macro swarshr16 rd, rs1, rs2, red, sat, norm, sgnd");
-      instr_stream.push_back(".insn r CUSTOM_1, (4 * \\norm + 2 * \\sat + \\red), ((\\sgnd << 6) + (1 << 3) + 3), \\rd, \\rs1, \\rs2");
-      instr_stream.push_back(".endm");
-    end
     instr_stream.push_back(".include \"user_define.h\"");
     instr_stream.push_back(".globl _start");
     instr_stream.push_back(".section .text");

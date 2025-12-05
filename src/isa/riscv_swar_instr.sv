@@ -73,18 +73,6 @@ class riscv_swar_instr extends riscv_instr;
           norm,
           sgnd
       );
-    end else begin
-      // `uvm_fatal("SWAR:", $sformatf(
-      //            "%0s %s, %s, %s, %01d, %01d, %01d, %01d",
-      //            instr_name.name(),
-      //            rd.name(),
-      //            rs1.name(),
-      //            rs2.name(),
-      //            red,
-      //            sat,
-      //            norm,
-      //            sgnd
-      //            ));
     end
     if (asm_str_final == "") begin
       return super.convert2asm(prefix);
