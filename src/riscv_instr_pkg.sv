@@ -1764,6 +1764,7 @@ package riscv_instr_pkg;
   `include "isa/rv64m_instr.sv"
   `include "isa/rv128c_instr.sv"
   `include "isa/rv32v_instr.sv"
+  `include "isa/riscv_swar_instr.sv"
   `include "isa/custom/riscv_custom_instr.sv"
   `include "isa/custom/rv32x_instr.sv"
   `include "isa/custom/rv64x_instr.sv"

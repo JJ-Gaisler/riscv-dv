@@ -250,65 +250,6 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
 
 endclass
 
-class riscv_swar_instr extends riscv_instr;
-  `uvm_object_utils(riscv_swar_instr)
-
-  function new(string name = "");
-    super.new(name);
-  endfunction : new
-
-  // Only a single instruction
-  virtual function void set_rand_mode();
-    super.set_rand_mode();
-    has_rd  = 1'b1;
-    has_rs2 = 1'b1;
-    has_rs1 = 1'b1;
-    has_imm = 1'b0;
-    format  = R_FORMAT;
-  endfunction
-
-  function void pre_randomize();
-    super.pre_randomize();
-  endfunction
-
-  virtual function bit is_supported(riscv_instr_gen_config cfg);
-    return (cfg.enable_swar_extension && (RV32SWAR inside {supported_isa}));
-  endfunction : is_supported
-
-  virtual function bit [6:0] get_func7();
-    case (instr_name) inside
-      SWAR: get_func7 = 7'b0000000;
-      default: get_func7 = super.get_func7();
-    endcase
-  endfunction
-
-  virtual function bit [2:0] get_func3();
-    case (instr_name) inside
-      SWAR: get_func3 = 3'b000;
-      default: get_func3 = super.get_func3();
-    endcase
-  endfunction
-
-  function bit [6:0] get_opcode();
-    case (instr_name) inside
-      SWAR   : get_opcode = 7'b0101011;
-      default : get_opcode = super.get_opcode();
-    endcase
-  endfunction : get_opcode
-
-  virtual function string convert2bin(string prefix = "");
-    return {prefix, $sformatf("0x%8h", {get_func7(), rs2, rs1, get_func3(), rd, get_opcode()})};
-  endfunction : convert2bin
-
-  virtual function string convert2asm(string prefix = "");
-    string asm_str = format_string("swar", MAX_INSTR_STR_LEN);
-    // string asm_str = {convert2bin(".4byte "), comment};
-    asm_str = $sformatf("%0s%s, %s, %s", asm_str, rd.name(), rs1.name(), rs2.name());
-    return asm_str.tolower();
-  endfunction
-
-endclass
-
 class swar_instr_stream extends riscv_directed_instr_stream;
 
   typedef enum bit [7:0] {
@@ -336,19 +277,19 @@ class swar_instr_stream extends riscv_directed_instr_stream;
   } swar_opcode_t;
 
   typedef struct {
-    rand swar_opcode_t select;  // 0:7
-    rand bit sign;  // 8
-    rand bit red;  // 9
-    rand bit sat;  // 10
-    rand bit norm;  // 11
-    rand bit audio;  // 12
-    rand bit video;  // 13
-    rand bit alu;  // 14
-    bit res0 = 0;  // 15
-    rand bit [5:0] dyn_rng;  // 16:22
-    rand bit restr;  // 23
-    rand bit refblk;  // 24
-    rand bit ctrl_clear;  // 25
+    rand swar_opcode_t select;           // 0:7
+    rand bit           sign;             // 8
+    rand bit           red;              // 9
+    rand bit           sat;              // 10
+    rand bit           norm;             // 11
+    rand bit           audio;            // 12
+    rand bit           video;            // 13
+    rand bit           alu;              // 14
+    bit                res0        = 0;  // 15
+    rand bit [5:0]     dyn_rng;          // 16:22
+    rand bit           restr;            // 23
+    rand bit           refblk;           // 24
+    rand bit           ctrl_clear;       // 25
   } swar_csr_t;
 
   // --- Feature flags for cfg 0 ---
@@ -625,7 +566,7 @@ class swar_instr_stream extends riscv_directed_instr_stream;
                       UVM_LOW);
             if (r_op_swar_other_q[i] == 0) begin
               riscv_instr instr = riscv_instr::get_rand_instr(
-                  .include_category({ARITHMETIC, RV32F, RV32D}),
+                  .include_category({ARITHMETIC, LOGICAL, COMPARE, SHIFT}),
                   // .include_category({ARITHMETIC, RV32F, RV32D, JUMP}),
                   .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB})
               );

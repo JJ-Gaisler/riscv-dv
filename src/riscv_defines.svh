@@ -49,7 +49,7 @@
     endfunction \
   endclass
 
- `define VA_INSTR_BODY(instr_n, instr_format, instr_category, instr_group, vav, ext = "") \
+`define VA_INSTR_BODY(instr_n, instr_format, instr_category, instr_group, vav, ext = "") \
     static bit valid = riscv_instr::register(instr_n);  \
     `uvm_object_utils(riscv_``instr_n``_instr)  \
     function new(string name = "");  \
@@ -135,7 +135,7 @@
 `define DEFINE_ZBS_INSTR(instr_n, instr_format, instr_category, instr_group, imm_tp = IMM) \
   class riscv_``instr_n``_instr extends riscv_zbs_instr; \
     `INSTR_BODY(instr_n, instr_format, instr_category, instr_group, imm_tp)
- 
+
 //Zbkb-extension instruction
 `define DEFINE_ZBKB_INSTR(instr_n, instr_format, instr_category, instr_group, imm_tp = IMM) \
   class riscv_``instr_n``_instr extends riscv_zbkb_instr; \
@@ -154,4 +154,9 @@
 //Zbkx-extension instruction
 `define DEFINE_ZBKX_INSTR(instr_n, instr_format, instr_category, instr_group, imm_tp = IMM) \
   class riscv_``instr_n``_instr extends riscv_zbkx_instr; \
+    `INSTR_BODY(instr_n, instr_format, instr_category, instr_group, imm_tp)
+
+// SWAR-extension instruction
+`define DEFINE_SWAR_INSTR(instr_n, instr_format, instr_category, instr_group, imm_tp = IMM) \
+  class riscv_``instr_n``_instr extends riscv_swar_instr; \
     `INSTR_BODY(instr_n, instr_format, instr_category, instr_group, imm_tp)
