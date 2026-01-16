@@ -292,13 +292,13 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     rand bit           ctrl_clear;       // 25
   } swar_csr_t;
 
-  // --- Feature flags for cfg 0 ---
-  bit supports_swcorrel = 1;
-  bit supports_swdemod  = 1;
-  bit supports_swsincos = 1;
+  // --- Feature flags for cfg 5 ---
+  bit supports_swcorrel = 0;
+  bit supports_swdemod  = 0;
+  bit supports_swsincos = 0;
   bit supports_swaudio  = 1;
   bit supports_swvideo  = 1;
-  bit supports_swalu    = 1;
+  bit supports_swalu    = 0;
   bit supports_swksplit = 0;
   bit supports_swacc    = 1;
   bit supports_swaccseq = 0;
@@ -585,21 +585,38 @@ class swar_instr_stream extends riscv_directed_instr_stream;
           end
 
           ACCUMULATE_WRITE: begin
+            riscv_pseudo_instr li_instr;
             riscv_instr tmp_instr;
+
+            // This is an ugly workaround, I don't understand why
+            // randomize_gpr always returns the same register.
+            li_instr = new();
+            randomize_gpr(li_instr);
+
             tmp_instr = new();
             tmp_instr = riscv_instr::get_instr(CSRRW);
             randomize_gpr(tmp_instr);
             tmp_instr.csr = CSR_SWAR_ACC_VAL;
+            tmp_instr.rs1 = li_instr.rd;
+            tmp_instr.rd = ZERO;
             tmp_instr.comment = "SWAR ACC WRITE";
             instr_list.push_back(tmp_instr);
           end
           ACCUMULATE_READ: begin
+            riscv_pseudo_instr li_instr;
             riscv_instr tmp_instr;
+
+            // This is an ugly workaround, I don't understand why
+            // randomize_gpr always returns the same register.
+            li_instr = new();
+            randomize_gpr(li_instr);
+
             tmp_instr = new();
             tmp_instr = riscv_instr::get_instr(CSRRW);
             randomize_gpr(tmp_instr);
             tmp_instr.csr = CSR_SWAR_ACC_VAL;
             tmp_instr.rs1 = ZERO;
+            tmp_instr.rd = li_instr.rd;
             tmp_instr.comment = "SWAR ACC READ";
             instr_list.push_back(tmp_instr);
           end
