@@ -395,10 +395,14 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     if (supports_swacc) {
       foreach (r_ops_q[i]) {
         r_ops_q[i] dist {
-          ACCUMULATE_WRITE  := 3,
-          ACCUMULATE_READ   := 6,
-          ACCUMULATE_SELECT := 3,
-          CALC              := 90
+//          ACCUMULATE_WRITE  := 3,
+//          ACCUMULATE_READ   := 6,
+//          ACCUMULATE_SELECT := 3,
+//          CALC              := 90
+          ACCUMULATE_WRITE  := 0,
+          ACCUMULATE_READ   := 0,
+          ACCUMULATE_SELECT := 0,
+          CALC              := 100
         };
       }
     } else {
