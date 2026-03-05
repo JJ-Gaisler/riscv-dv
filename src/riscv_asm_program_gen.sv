@@ -327,6 +327,8 @@ class riscv_asm_program_gen extends uvm_object;
   virtual function void gen_program_header();
     string str[$];
     instr_stream.push_back(".include \"user_define.h\"");
+    if (cfg.enable_swar_extension)
+      instr_stream.push_back("#include \"swar_instr.hpp\"");
     instr_stream.push_back(".globl _start");
     instr_stream.push_back(".section .text");
     if (cfg.disable_compressed_instr) begin

@@ -28,21 +28,21 @@ class riscv_swar_instr extends riscv_instr;
 
   virtual function bit [6:0] get_func7();
     case (instr_name) inside
-      SWARI:   get_func7 = 7'b0000000;
+      SWAR: get_func7 = 7'b0000000;
       default: get_func7 = super.get_func7();
     endcase
   endfunction
 
   virtual function bit [2:0] get_func3();
     case (instr_name) inside
-      SWARI:   get_func3 = 3'b000;
+      SWAR: get_func3 = 3'b000;
       default: get_func3 = super.get_func3();
     endcase
   endfunction
 
   function bit [6:0] get_opcode();
     case (instr_name) inside
-      SWARI:   get_opcode = 7'b0101011;
+      SWAR: get_opcode = 7'b0101011;
       default: get_opcode = super.get_opcode();
     endcase
   endfunction : get_opcode
@@ -56,30 +56,20 @@ class riscv_swar_instr extends riscv_instr;
     string asm_str_final;
     string asm_str;
 
+    if (this.group != RV32SWAR) begin
+      return super.convert2asm(prefix);
+    end
+
     asm_str = format_string(get_instr_name(), MAX_INSTR_STR_LEN);
 
-    if (instr_name inside {SWARI}) begin
-      asm_str_final = $sformatf("%0s%s, %s, %s", asm_str, rd.name(), rs1.name(), rs2.name());
-    end else if (instr_name inside { SWARADD8, SWARADD16, SWARSUB8, SWARSUB16,
-                                     SWARMUL8, SWARMUL16, SWARSHR8, SWARSHR16 } ) begin
-      asm_str_final = $sformatf(
-          "%0s%s, %s, %s, %01d, %01d, %01d, %01d",
-          asm_str,
-          rd.name(),
-          rs1.name(),
-          rs2.name(),
-          red,
-          sat,
-          norm,
-          sgnd
-      );
-    end
+    asm_str_final =
+        $sformatf("%0s%s, %s, %s # swar instr", asm_str, rd.name(), rs1.name(), rs2.name());
     if (asm_str_final == "") begin
       return super.convert2asm(prefix);
     end
 
     if (comment != "") begin
-      asm_str_final = { asm_str_final, " #", comment };
+      asm_str_final = {asm_str_final, " #", comment};
     end
 
     return asm_str_final.tolower();

@@ -455,10 +455,10 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     ret[13]    = in.video;
     ret[14]    = in.alu;
     ret[15]    = in.res0;
-    ret[21:16] = in.dyn_rng;
-    ret[22]    = in.restr;
-    ret[23]    = in.refblk;
-    ret[24]    = in.ctrl_clear;
+    ret[22:16] = in.dyn_rng;
+    ret[23]    = in.restr;
+    ret[24]    = in.refblk;
+    ret[25]    = in.ctrl_clear;
     return ret;
   endfunction
 
