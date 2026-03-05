@@ -113,6 +113,12 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
 
   virtual function void gen_swar_init_section();
     string str[$];
+
+    // Only applicable in M mode right now since DV can't run in VS/VU
+    // TODO: Define this as a constnat instead (mnvstatus)
+    if (RV32NOELV inside {supported_isa} && cfg.enable_swar_extension)
+      str.push_back($sformatf("csrsi 0x7ea, 1 << 2"));
+
     if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar_extension) begin
 
       // If we have stateen we need to allow all modes to access swar
@@ -175,10 +181,10 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
       instr.push_back({
                       indent,
                       $sformatf(
-                          "li x%0d, 0x%0x | %d << 63",
+                          "li x%0d, 0x%0x | %d << 61",
                           cfg.gpr[0],
                           r_feature,
-                          cfg.enable_swar_extension
+                          cfg.enable_swar_extension * 7,
                       )
                       });
       instr.push_back({indent, $sformatf("csrw 0x%0x, x%0d #nvc_features", 12'h7c0, cfg.gpr[0])});
