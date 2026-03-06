@@ -203,26 +203,28 @@ bit[11:0] custom_csr[] = {
   12'h7d4, //CSR_FTH
   12'h7d5, //CSR_EINJECTH
   12'h7d6, //CSR_DFEATURESH
-  // Custom Read-only Registers
-  12'hfc0, //CSR_CAPABILITY
-  12'hfd0, //CSR_CAPABILITYH
-  //GRLIB_INTERNAL_BEGIN
-  // Custom Read/Write Unprivileged Registers
-  12'h800, //CSR_TRACE_CTRL
-  12'h803, //CSR_TFILT_OPS
-  12'h804, //CSR_TFILT_OPMASK
-  12'h805, //CSR_TFILT_OP
-  12'h806, //CSR_TFILT_OPAMASK
-  12'h807, //CSR_TFILT_OPADDR
-  12'h808, //CSR_TFILT_RWAMASK
-  12'h809, //CSR_TFILT_RWADDR
-  12'h80a, //CSR_TFILT_RESMASK
-  12'h80b, //CSR_TFILT_RESULT
-  12'h80c, //CSR_TFILT_TVMASK
-  12'h80d, //CSR_TFILT_TVAL
-  12'h80e, //CSR_TFILT_EXC
-  12'h80f, //CSR_IRQTEST
-  12'h810 //CSR_FFLAGS_I
+
+  12'h810, //CSR_FFLAGS_I
+  12'h7d7, /* CSR_MNTVEC */
+  12'h7d8, /* CSR_INTERRNMI */
+  12'h7d9, /* CSR_INTERRNMI2 */
+  12'h7da, /* CSR_INTERRNMI3 */
+  12'h7de, /* CSR_INTERRHALT */
+  12'h7df, /* CSR_INTERRHALT2 */
+  12'h7e0, /* CSR_INTERRHALT3 */
+  12'h7e4, /* CSR_INTERROR */
+  12'h7e5, /* CSR_INTERROR2 */
+  12'h7e6, /* CSR_INTERROR3 */
+  12'h7ea, /* CSR_MNVSTATUS */
+  12'hfc0, /* CSR_CAPABILITY */
+  12'hfc1, /* CSR_CAPABILITY2 */
+  12'hfc2, /* CSR_CAPABILITY3 */
+  12'hfc3, /* CSR_CAPABILITY4 */
+  12'hfc4, /* CSR_CAPABILITY5 */
+  12'h801, /* CSR_SWARCFG */
+  12'h802, /* CSR_SWARACCSEL */
+  12'h803, /* CSR_SWARACCVAL */
+  12'h804 /* CSR_ALUCFG */
 };
 
 // ----------------------------------------------------------------------------
