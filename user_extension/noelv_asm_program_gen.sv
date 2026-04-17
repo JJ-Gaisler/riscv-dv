@@ -116,8 +116,11 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
 
     // Only applicable in M mode right now since DV can't run in VS/VU
     // TODO: Define this as a constnat instead (mnvstatus)
-    if (RV32NOELV inside {supported_isa} && cfg.enable_swar_extension)
+    if (RV32NOELV inside {supported_isa} && cfg.enable_swar_extension) begin
+      str.push_back($sformatf("li x%0d, %d << 62", cfg.gpr[0], cfg.enable_swar_extension * 3));
+      str.push_back($sformatf("csrs  0x7c0, x%0d # nvc_features (enable swar.[csr/acc])", cfg.gpr[0]));
       str.push_back($sformatf("csrsi 0x7ea, 1 << 2"));
+    end
 
     if (RV32NOELV inside {supported_isa} && RV32SWAR inside {supported_isa} && cfg.enable_swar_extension) begin
 
@@ -177,14 +180,16 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
       `uvm_fatal("RAND_FAIL", "Randomization failed for r_feature")
     end
     if (RV32NOELV inside {supported_isa}) begin
+      // Disable for now, may be bad to have workaround bits set all the time...
+      return;
       `uvm_info(`gfn, $sformatf("Randomizing CSR features: %x", r_feature), UVM_LOW)
       instr.push_back({
                       indent,
                       $sformatf(
-                          "li x%0d, 0x%0x | %d << 61",
+                          "li x%0d, 0x%0x | %d << 62",
                           cfg.gpr[0],
                           r_feature,
-                          cfg.enable_swar_extension * 7,
+                          cfg.enable_swar_extension * 3,
                       )
                       });
       instr.push_back({indent, $sformatf("csrw 0x%0x, x%0d #nvc_features", 12'h7c0, cfg.gpr[0])});
@@ -234,13 +239,15 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
   endfunction : pre_randomize
 
   function void post_randomize();
+    // Disable for now, may be bad to have workaround bits set all the time...
+    return;
     if (RV32NOELV inside {supported_isa} && cfg.init_privileged_mode == MACHINE_MODE) begin
       riscv_pseudo_instr li_instr;
       li_instr = new();
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
-      li_instr.imm_str = $sformatf("0x%8h | %d << 63", r_feature,
-                                   cfg.enable_swar_extension);  // For the sake of SWAR
+      li_instr.imm_str = $sformatf("0x%8h | %d << 62", r_feature,
+                                   cfg.enable_swar_extension * 3);  // For the sake of SWAR
       instr_list.push_back(li_instr);
 
       //read/write fssr
@@ -401,10 +408,10 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     if (supports_swacc) {
       foreach (r_ops_q[i]) {
         r_ops_q[i] dist {
-//          ACCUMULATE_WRITE  := 3,
-//          ACCUMULATE_READ   := 6,
-//          ACCUMULATE_SELECT := 3,
-//          CALC              := 90
+          //          ACCUMULATE_WRITE  := 3,
+          //          ACCUMULATE_READ   := 6,
+          //          ACCUMULATE_SELECT := 3,
+          //          CALC              := 90
           ACCUMULATE_WRITE  := 0,
           ACCUMULATE_READ   := 0,
           ACCUMULATE_SELECT := 0,
