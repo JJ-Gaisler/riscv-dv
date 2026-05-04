@@ -248,7 +248,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   //    virtual address which currently not mapped a valid physical address. Need to do a
   //    memcpy to move data from lower physical address to the place the virtual address map to.
   // TODO: Refactor this part with new reserved GPR
-  virtual function void gen_page_fault_handling_routine(ref string instr[$], input hart=0);
+  virtual function void gen_page_fault_handling_routine(ref string instr[$], input int hart=0);
     int unsigned  level;
     string        load_store_unit;
     bit[XLEN-1:0] bit_mask = '1;
@@ -434,7 +434,7 @@ class riscv_page_table_list#(satp_mode_t MODE = SV39) extends uvm_object;
   endfunction
 
   // Link page table
-  virtual function void process_page_table(output string instr[$], input hart=0);
+  virtual function void process_page_table(output string instr[$], input int hart=0);
     string load_store_unit;
     int pte_addr_offset;
     bit [XLEN-1:0] ubit_mask = '1;

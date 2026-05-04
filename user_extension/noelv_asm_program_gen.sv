@@ -13,8 +13,8 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
     gen_plic_section(interrupt_handler_instr, mode);
   endfunction
 
-  virtual function void gen_custom_program_header();
-    gen_swar_init_section();
+  virtual function void gen_custom_program_header(int hart);
+    gen_swar_init_section(hart);
   endfunction
 
   // Only extend this function if the core utilizes a PLIC for handling interrupts
@@ -111,14 +111,15 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
     interrupt_handler_instr.push_back($sformatf("1:"));
   endfunction
 
-  virtual function void gen_swar_init_section();
+  virtual function void gen_swar_init_section(int hart);
     string str[$];
 
     // Only applicable in M mode right now since DV can't run in VS/VU
     // TODO: Define this as a constnat instead (mnvstatus)
     if (RV32NOELV inside {supported_isa} && cfg.enable_swar_extension) begin
-      str.push_back($sformatf("li x%0d, %d << 62", cfg.gpr[0], cfg.enable_swar_extension * 3));
-      str.push_back($sformatf("csrs  0x7c0, x%0d # nvc_features (enable swar.[csr/acc])", cfg.gpr[0]));
+      str.push_back($sformatf("li x%0d, %0d << 62", cfg.gpr[0], cfg.enable_swar_extension * 3));
+      str.push_back($sformatf("csrs  0x7c0, x%0d # nvc_features (enable swar.[csr/acc])", cfg.gpr[0]
+                    ));
       str.push_back($sformatf("csrsi 0x7ea, 1 << 2"));
     end
 
@@ -127,7 +128,7 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
       // If we have stateen we need to allow all modes to access swar
       if (RV32SMSTATEEN inside {supported_isa}) begin
         // set C and stateen for lower priv mode
-        str.push_back($sformatf("li x%0d, (1 << %d) | 1", cfg.gpr[0], XLEN - 1));
+        str.push_back($sformatf("li x%0d, (1 << %0d) | 1", cfg.gpr[0], XLEN - 1));
         str.push_back($sformatf("csrr x%0d, mstateen0", cfg.gpr[1]));
         str.push_back($sformatf("or   x%0d, x%0d, x%0d", cfg.gpr[0], cfg.gpr[1], cfg.gpr[0]));
         str.push_back($sformatf("csrw mstateen0, x%0d", cfg.gpr[0]));
@@ -150,7 +151,7 @@ class noelv_asm_program_gen extends riscv_asm_program_gen;
           end
         end
       end
-      gen_section("custom_init", str);
+      gen_section(get_label("custom_init", hart), str);
     end
   endfunction
 
@@ -243,8 +244,13 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
     return;
     if (RV32NOELV inside {supported_isa} && cfg.init_privileged_mode == MACHINE_MODE) begin
       riscv_pseudo_instr li_instr;
+      reserved_rd = {cfg.reserved_regs, ZERO};
+      randomize_avail_regs();
       li_instr = new();
       randomize_gpr(li_instr);
+      if (li_instr.rd == ZERO) begin
+        `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
+      end
       li_instr.pseudo_instr_name = LI;
       li_instr.imm_str = $sformatf("0x%8h | %d << 62", r_feature,
                                    cfg.enable_swar_extension * 3);  // For the sake of SWAR
@@ -479,10 +485,15 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     riscv_instr tmp_instr;
     riscv_pseudo_instr li_instr;
     tmp_instr = new();
-    li_instr  = new();
+    li_instr = new();
+
+    li_instr.pseudo_instr_name = LI;
 
     randomize_gpr(li_instr);
-    li_instr.pseudo_instr_name = LI;
+
+    if (li_instr.rd == ZERO) begin
+      `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
+    end
     li_instr.imm_str = $sformatf("0x%8h # Reconfigure swar ctrl", pack_swar_csr_t(r_swar_q[idx]));
     instr_list.push_back(li_instr);
 
@@ -533,6 +544,8 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       riscv_instr tmp_instr;
       riscv_pseudo_instr li_instr;
       int swar_insts = 0;
+      reserved_rd = {cfg.reserved_regs, ZERO};
+      randomize_avail_regs();
 
       tmp_instr = new();
       li_instr  = new();
@@ -540,6 +553,9 @@ class swar_instr_stream extends riscv_directed_instr_stream;
       randomize_gpr(li_instr);
       li_instr.pseudo_instr_name = LI;
       li_instr.imm_str = $sformatf("0x%8h # Init swar ctrl", pack_swar_csr_t(r_swar_q[0]));
+      if (li_instr.rd == ZERO) begin
+        `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
+      end
       instr_list.push_back(li_instr);
 
       tmp_instr = new();

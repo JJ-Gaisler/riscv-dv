@@ -92,7 +92,7 @@ parameter int MAX_LMUL = 8;
 // ----------------------------------------------------------------------------
 
 // Number of harts
-parameter int NUM_HARTS = 1;
+parameter int NUM_HARTS = 8;
 
 // ----------------------------------------------------------------------------
 // Previleged CSR implementation

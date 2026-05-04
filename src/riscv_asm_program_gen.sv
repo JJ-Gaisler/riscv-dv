@@ -76,7 +76,7 @@ class riscv_asm_program_gen extends uvm_object;
       string sub_program_name[$];
       instr_stream.push_back($sformatf("%0sstart:", hart_prefix(hart)));
       if (!cfg.bare_program_mode) begin
-        gen_custom_program_header();
+        gen_custom_program_header(hart);
         setup_misa();
         // Create all page tables
         create_page_table(hart);
@@ -321,7 +321,7 @@ class riscv_asm_program_gen extends uvm_object;
   //---------------------------------------------------------------------------------------
   // Major sections - init, stack, data, test_done etc.
   //---------------------------------------------------------------------------------------
-  virtual function void gen_custom_program_header();
+  virtual function void gen_custom_program_header(int hart);
   endfunction;
 
   virtual function void gen_program_header();
