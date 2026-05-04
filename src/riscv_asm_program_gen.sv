@@ -873,9 +873,13 @@ class riscv_asm_program_gen extends uvm_object;
       // For supervisor and user mode, use virtual address instead of physical address.
       // Virtual address starts from address 0x0, here only the lower 12 bits are kept
       // as virtual address offset.
-      instr = {instr,
-               $sformatf("slli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], XLEN - 12),
-               $sformatf("srli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], XLEN - 12)};
+      // instr = {instr,
+      //          $sformatf("slli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], XLEN - 12),
+      //          $sformatf("srli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], XLEN - 12)};
+      // JJ: This is an ugly hack that doesn't work if we have more than one
+      // hart. It also assumes that the setup code will never move past 4K in
+      // size.
+      // TODO: Provide the VA -> PA mapping if we don't 1:1 map.
     end
     mode_name = cfg.init_privileged_mode.name();
     instr.push_back($sformatf("csrw 0x%0x, x%0d", MEPC, cfg.gpr[0]));
