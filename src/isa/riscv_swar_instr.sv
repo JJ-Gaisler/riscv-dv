@@ -1,12 +1,10 @@
 class riscv_swar_instr extends riscv_instr;
   `uvm_object_utils(riscv_swar_instr)
-  rand bit red;
-  rand bit sat;
-  rand bit norm;
-  rand bit sgnd;
 
   function new(string name = "");
     super.new(name);
+    this.group = RV32SWAR;
+    this.instr_name = SWAR;
   endfunction : new
 
   virtual function void set_rand_mode();
@@ -57,6 +55,8 @@ class riscv_swar_instr extends riscv_instr;
     string asm_str;
 
     if (this.group != RV32SWAR) begin
+      $stacktrace;
+      `uvm_fatal("SWAR", $sformatf("We shouldn't end up here %s %s", this.group, get_instr_name()));
       return super.convert2asm(prefix);
     end
 

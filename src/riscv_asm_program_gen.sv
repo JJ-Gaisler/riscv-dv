@@ -1097,6 +1097,7 @@ class riscv_asm_program_gen extends uvm_object;
     if (cfg.mtvec_mode == VECTORED) begin
       gen_interrupt_vector_table(hart, mode, status, cause, ie, ip, scratch, instr);
     end else begin
+      string skip_label = $sformatf("h%0d_%0s_chk_n_trp_sync_trap", hart, mode);
       // Push user mode GPR to kernel stack before executing exception handling, this is to avoid
       // exception handling routine modify user program state unexpectedly
       push_gpr_to_kernel_stack(status, scratch, cfg.mstatus_mprv, cfg.sp, cfg.tp, instr);
@@ -1111,9 +1112,12 @@ class riscv_asm_program_gen extends uvm_object;
                // handler Interrupt is indicated by xCause[XLEN-1]
                $sformatf("csrr x%0d, 0x%0x # %0s", cfg.gpr[0], cause, cause.name()),
                $sformatf("srli x%0d, x%0d, %0d", cfg.gpr[0], cfg.gpr[0], XLEN-1),
+               $sformatf("beqz x%0d, %0s",cfg.gpr[0], skip_label),
                $sformatf("la x%0d, %0s%0smode_intr_handler",
                          cfg.gpr[0], hart_prefix(hart), mode),
-               $sformatf("jr x%0d", cfg.gpr[0])};
+               $sformatf("jr x%0d", cfg.gpr[0]),
+               $sformatf("%0s:",skip_label)
+               };
     end
     // The trap handler will occupy one 4KB page, it will be allocated one entry in the page table
     // with a specific privileged mode.

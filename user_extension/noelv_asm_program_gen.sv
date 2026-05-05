@@ -248,19 +248,22 @@ class csr_features_instr_stream extends riscv_directed_instr_stream;
       randomize_avail_regs();
       li_instr = new();
       randomize_gpr(li_instr);
-      if (li_instr.rd == ZERO) begin
+      if (li_instr.rd == ZERO)
         `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
-      end
+      if (r_feature == '0)
+        `uvm_fatal("FEATURES RAND FAIL", "Randomization failed LI zero is not valid")
       li_instr.pseudo_instr_name = LI;
       li_instr.imm_str = $sformatf("0x%8h | %d << 62", r_feature,
                                    cfg.enable_swar_extension * 3);  // For the sake of SWAR
       instr_list.push_back(li_instr);
+      li_instr.comment = "Features rand var";
 
       //read/write fssr
       tmp_instr = riscv_instr::get_instr(CSRRW);
       tmp_instr.csr = 12'h7c0;
       tmp_instr.rs1 = li_instr.rd;
       tmp_instr.rd = li_instr.rd;
+      tmp_instr.comment = "Features randomization";
       instr_list.push_back(tmp_instr);
       super.post_randomize();
     end
@@ -414,14 +417,14 @@ class swar_instr_stream extends riscv_directed_instr_stream;
     if (supports_swacc) {
       foreach (r_ops_q[i]) {
         r_ops_q[i] dist {
-          //          ACCUMULATE_WRITE  := 3,
-          //          ACCUMULATE_READ   := 6,
-          //          ACCUMULATE_SELECT := 3,
-          //          CALC              := 90
-          ACCUMULATE_WRITE  := 0,
-          ACCUMULATE_READ   := 0,
-          ACCUMULATE_SELECT := 0,
-          CALC              := 100
+                   ACCUMULATE_WRITE  := 3,
+                   ACCUMULATE_READ   := 6,
+                   ACCUMULATE_SELECT := 3,
+                   CALC              := 90
+          // ACCUMULATE_WRITE  := 0,
+          // ACCUMULATE_READ   := 0,
+          // ACCUMULATE_SELECT := 0,
+          // CALC              := 100
         };
       }
     } else {
@@ -604,13 +607,15 @@ class swar_instr_stream extends riscv_directed_instr_stream;
                   .exclude_group({RV32C, RV64C, RV32ZCB, RV64ZCB})
               );
               randomize_gpr(instr);
+              instr.comment = "SWAR RAND (other instruction)";
               instr_list.push_back(instr);
             end else begin
               riscv_swar_instr swar_instr;
               `uvm_info(`gfn, $sformatf("Generating SWAR CALC num %d", swar_insts), UVM_LOW);
               swar_instr = new();
-              if (swar_insts % r_reconfig_ratio == 0) reconfigure_ctrl(r_num_of_ops[i+1]);
+              if (swar_insts % r_reconfig_ratio == 0) reconfigure_ctrl(i);
               `DV_CHECK_RANDOMIZE_FATAL(swar_instr);
+              swar_instr.comment="SWAR CALC";
               randomize_gpr(swar_instr);
               instr_list.push_back(swar_instr);
               swar_insts++;
@@ -625,6 +630,9 @@ class swar_instr_stream extends riscv_directed_instr_stream;
             // randomize_gpr always returns the same register.
             li_instr = new();
             randomize_gpr(li_instr);
+            if (li_instr.rd == ZERO)
+              `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
+            li_instr.comment = "SHOULD NOT BE IN ASM";
 
             tmp_instr = new();
             tmp_instr = riscv_instr::get_instr(CSRRW);
@@ -643,6 +651,9 @@ class swar_instr_stream extends riscv_directed_instr_stream;
             // randomize_gpr always returns the same register.
             li_instr = new();
             randomize_gpr(li_instr);
+            if (li_instr.rd == ZERO)
+              `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
+            li_instr.comment = "SHOULD NOT BE IN ASM";
 
             tmp_instr = new();
             tmp_instr = riscv_instr::get_instr(CSRRW);
@@ -661,6 +672,8 @@ class swar_instr_stream extends riscv_directed_instr_stream;
 
             li_instr = new();
             randomize_gpr(li_instr);
+            if (li_instr.rd == ZERO)
+              `uvm_fatal("LI RAND FAIL", "Randomization failed LI zero is not valid")
             li_instr.pseudo_instr_name = LI;
             li_instr.imm_str = $sformatf("0x%8h", r_acc_sel);
             li_instr.imm = r_acc_sel;
